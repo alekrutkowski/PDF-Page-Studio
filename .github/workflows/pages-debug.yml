@@ -1,0 +1,417 @@
+name: Debug deploy index.html to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - index.html
+      - .github/workflows/pages-debug.yml
+  workflow_dispatch:
+
+env:
+  ACTIONS_STEP_DEBUG: "true"
+  ACTIONS_RUNNER_DEBUG: "true"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: read
+  deployments: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Debug GitHub Pages deployment
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Print debug settings and GitHub context
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VAR_ACTIONS_STEP_DEBUG: ${{ vars.ACTIONS_STEP_DEBUG }}
+          VAR_ACTIONS_RUNNER_DEBUG: ${{ vars.ACTIONS_RUNNER_DEBUG }}
+        run: |
+          set +e
+
+          echo "::group::Debug switches"
+          echo "Workflow env ACTIONS_STEP_DEBUG=${ACTIONS_STEP_DEBUG}"
+          echo "Workflow env ACTIONS_RUNNER_DEBUG=${ACTIONS_RUNNER_DEBUG}"
+          echo "Repository variable ACTIONS_STEP_DEBUG=${VAR_ACTIONS_STEP_DEBUG}"
+          echo "Repository variable ACTIONS_RUNNER_DEBUG=${VAR_ACTIONS_RUNNER_DEBUG}"
+          echo "Runner env RUNNER_DEBUG=${RUNNER_DEBUG:-not set}"
+
+          if [[ "${VAR_ACTIONS_STEP_DEBUG}" != "true" ]]; then
+            echo "::warning::Repository variable ACTIONS_STEP_DEBUG is not set to true. GitHub's built-in step debug logs may not be enabled."
+          fi
+
+          if [[ "${VAR_ACTIONS_RUNNER_DEBUG}" != "true" ]]; then
+            echo "::warning::Repository variable ACTIONS_RUNNER_DEBUG is not set to true. GitHub's built-in runner diagnostic logs may not be enabled."
+          fi
+          echo "::endgroup::"
+
+          echo "::group::Basic GitHub context"
+          echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}"
+          echo "GITHUB_REF=${GITHUB_REF}"
+          echo "GITHUB_SHA=${GITHUB_SHA}"
+          echo "GITHUB_WORKFLOW=${GITHUB_WORKFLOW}"
+          echo "GITHUB_RUN_ID=${GITHUB_RUN_ID}"
+          echo "GITHUB_RUN_ATTEMPT=${GITHUB_RUN_ATTEMPT}"
+          echo "GITHUB_ACTOR=${GITHUB_ACTOR}"
+          echo "RUNNER_OS=${RUNNER_OS}"
+          echo "RUNNER_ARCH=${RUNNER_ARCH}"
+          echo "PWD=$(pwd)"
+          echo "::endgroup::"
+
+          echo "::group::Tool versions"
+          git --version || true
+          gh --version || true
+          tar --version || true
+          gzip --version || true
+          file --version || true
+          stat --version || true
+          echo "::endgroup::"
+
+          echo "::group::Repository API snapshot"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}" \
+            --jq '{full_name, private, visibility, default_branch, has_pages, archived, disabled, fork}' \
+            || echo "::warning::Could not read repository API snapshot"
+          echo "::endgroup::"
+
+      - name: Preflight root index.html
+        id: preflight
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "::error file=.github/workflows/pages-debug.yml,line=${LINENO}::Preflight failed while running: ${BASH_COMMAND}"' ERR
+
+          echo "::group::Git state"
+          git status --short
+          git log -1 --pretty=fuller
+          echo "Current branch according to git:"
+          git branch --show-current || true
+          echo "::endgroup::"
+
+          echo "::group::Root directory listing"
+          find . -maxdepth 1 -printf '%M %n %s %p\n' | sort
+          echo "::endgroup::"
+
+          echo "::group::Find index-like files at repository root"
+          find . -maxdepth 1 -iname 'index*' -printf '%M %n %s %p\n' | sort
+          echo "::endgroup::"
+
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "::error::This workflow is intended to deploy refs/heads/main, but GITHUB_REF is ${GITHUB_REF}"
+            exit 1
+          fi
+
+          if [[ ! -e index.html ]]; then
+            echo "::error::index.html does not exist at the repository root"
+            exit 1
+          fi
+
+          if [[ -L index.html ]]; then
+            echo "::error::index.html is a symbolic link. GitHub Pages artifacts must not contain symlinks."
+            ls -la index.html
+            exit 1
+          fi
+
+          if [[ ! -f index.html ]]; then
+            echo "::error::index.html exists but is not a regular file"
+            ls -la index.html
+            exit 1
+          fi
+
+          bytes="$(wc -c < index.html | tr -d ' ')"
+          echo "index.html size in bytes: ${bytes}"
+
+          if [[ "${bytes}" -eq 0 ]]; then
+            echo "::error::index.html is empty"
+            exit 1
+          fi
+
+          echo "::group::index.html diagnostics"
+          ls -lah index.html
+          stat index.html
+          file index.html || true
+
+          echo "First 16 bytes:"
+          head -c 16 index.html | od -An -tx1 || true
+          echo
+
+          echo "First 30 lines:"
+          sed -n '1,30p' index.html || true
+          echo "::endgroup::"
+
+          echo "::group::Non-fatal HTML warnings"
+          grep -nE '<base[[:space:]][^>]*href=' index.html \
+            && echo "::warning::index.html contains a <base href=...> tag. This can affect paths on GitHub Pages." \
+            || true
+
+          grep -nE '(href|src)=["'\''"]/[^/"'\'']' index.html \
+            && echo "::warning::index.html appears to contain root-absolute asset paths such as /asset.ext. This usually does not break deployment, but may break rendering for project Pages URLs." \
+            || true
+
+          grep -nE '(http://localhost|https://localhost|file://|C:\\|/home/|/mnt/)' index.html \
+            && echo "::warning::index.html appears to contain local-machine paths or localhost references." \
+            || true
+
+          grep -nE '<script[^>]+type=["'\'']module["'\'']' index.html \
+            && echo "::notice::index.html contains JavaScript modules. This should deploy, but relative imports must work under the final Pages URL." \
+            || true
+          echo "::endgroup::"
+
+      - name: Prepare clean Pages artifact directory
+        id: prepare_site
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "::error file=.github/workflows/pages-debug.yml,line=${LINENO}::Preparing _site failed while running: ${BASH_COMMAND}"' ERR
+
+          rm -rf _site
+          mkdir -p _site
+
+          install -m 0644 index.html _site/index.html
+
+          echo "::group::_site listing"
+          find _site -printf '%M %n %s %p\n' | sort
+          echo "::endgroup::"
+
+          echo "::group::_site size"
+          du -ah _site
+          du -sb _site
+          echo "::endgroup::"
+
+          if [[ ! -f _site/index.html ]]; then
+            echo "::error::_site/index.html was not created"
+            exit 1
+          fi
+
+          if [[ ! -s _site/index.html ]]; then
+            echo "::error::_site/index.html is missing or empty"
+            exit 1
+          fi
+
+          if find _site -type l -print -quit | grep -q .; then
+            echo "::error::_site contains symbolic links"
+            find _site -type l -printf '%p -> %l\n'
+            exit 1
+          fi
+
+          if find _site -type f -links +1 -print -quit | grep -q .; then
+            echo "::error::_site contains hard-linked files"
+            find _site -type f -links +1 -printf '%n links %p\n'
+            exit 1
+          fi
+
+          file_count="$(find _site -type f | wc -l | tr -d ' ')"
+          echo "_site regular file count: ${file_count}"
+
+          if [[ "${file_count}" -ne 1 ]]; then
+            echo "::error::_site should contain exactly one regular file, but contains ${file_count}"
+            find _site -type f -printf '%p\n'
+            exit 1
+          fi
+
+      - name: Create local debug tarball
+        id: debug_tarball
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "::error file=.github/workflows/pages-debug.yml,line=${LINENO}::Debug tarball creation failed while running: ${BASH_COMMAND}"' ERR
+
+          rm -f /tmp/pages-debug.tar /tmp/pages-debug.tar.gz
+
+          tar -C _site -cvf /tmp/pages-debug.tar .
+          gzip -9 -c /tmp/pages-debug.tar > /tmp/pages-debug.tar.gz
+
+          echo "::group::Debug tarball contents"
+          tar -tvf /tmp/pages-debug.tar
+          echo "::endgroup::"
+
+          echo "::group::Debug tarball integrity"
+          gzip -t /tmp/pages-debug.tar.gz
+          ls -lah /tmp/pages-debug.tar /tmp/pages-debug.tar.gz
+          echo "::endgroup::"
+
+      - name: Upload debug copy of prepared site
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debug-pages-input
+          path: |
+            _site
+            /tmp/pages-debug.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Configure GitHub Pages
+        id: configure_pages
+        uses: actions/configure-pages@v5
+        continue-on-error: true
+
+      - name: Print Pages settings after configure-pages
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+
+          echo "::group::GitHub Pages site API"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/pages" \
+            || echo "::warning::Could not read Pages site API. Check whether Pages is enabled and whether the Source is set to GitHub Actions."
+          echo "::endgroup::"
+
+      - name: Upload GitHub Pages artifact
+        id: upload_pages
+        uses: actions/upload-pages-artifact@v4
+        continue-on-error: true
+        with:
+          path: _site
+
+      - name: Print artifacts from this workflow run
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+
+          echo "::group::Artifacts in this workflow run"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+            --jq '.artifacts[] | {id, name, size_in_bytes, expired, created_at, updated_at}' \
+            || echo "::warning::Could not list workflow artifacts"
+          echo "::endgroup::"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        if: ${{ steps.upload_pages.outcome == 'success' }}
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+        with:
+          artifact_name: github-pages
+          timeout: 600000
+          error_count: 20
+          reporting_interval: 2000
+
+      - name: Postmortem after deploy-pages
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+
+          echo "::group::Step outcomes"
+          echo "preflight outcome:        ${{ steps.preflight.outcome }}"
+          echo "prepare_site outcome:     ${{ steps.prepare_site.outcome }}"
+          echo "debug_tarball outcome:    ${{ steps.debug_tarball.outcome }}"
+          echo "configure_pages outcome:  ${{ steps.configure_pages.outcome }}"
+          echo "upload_pages outcome:     ${{ steps.upload_pages.outcome }}"
+          echo "deployment outcome:       ${{ steps.deployment.outcome }}"
+          echo "deployment conclusion:    ${{ steps.deployment.conclusion }}"
+          echo "deployment page_url:      ${{ steps.deployment.outputs.page_url }}"
+          echo "::endgroup::"
+
+          echo "::group::Current GitHub Pages site API"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/pages" \
+            || echo "::warning::Could not read current Pages site API"
+          echo "::endgroup::"
+
+          echo "::group::Recent Pages builds"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/pages/builds?per_page=10" \
+            || echo "::warning::Could not read recent Pages builds"
+          echo "::endgroup::"
+
+          echo "::group::Recent repository deployments for github-pages environment"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/deployments?environment=github-pages&per_page=10" \
+            || echo "::warning::Could not read repository deployments for github-pages"
+          echo "::endgroup::"
+
+          echo "::group::Recent repository deployments for this SHA"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/deployments?sha=${GITHUB_SHA}&per_page=10" \
+            || echo "::warning::Could not read repository deployments for ${GITHUB_SHA}"
+          echo "::endgroup::"
+
+          {
+            echo "## GitHub Pages debug summary"
+            echo
+            echo "| Step | Outcome |"
+            echo "|---|---|"
+            echo "| preflight | ${{ steps.preflight.outcome }} |"
+            echo "| prepare_site | ${{ steps.prepare_site.outcome }} |"
+            echo "| configure_pages | ${{ steps.configure_pages.outcome }} |"
+            echo "| upload_pages | ${{ steps.upload_pages.outcome }} |"
+            echo "| deployment | ${{ steps.deployment.outcome }} |"
+            echo
+            echo "Prepared artifact contents:"
+            echo
+            echo '```text'
+            find _site -printf '%M %n %s %p\n' | sort || true
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Fail if deployment did not succeed
+        if: always()
+        shell: bash
+        run: |
+          failed=0
+
+          if [[ "${{ steps.preflight.outcome }}" != "success" ]]; then
+            echo "::error::Preflight failed. Root index.html or branch state is invalid."
+            failed=1
+          fi
+
+          if [[ "${{ steps.prepare_site.outcome }}" != "success" ]]; then
+            echo "::error::Preparing the clean _site directory failed."
+            failed=1
+          fi
+
+          if [[ "${{ steps.configure_pages.outcome }}" != "success" ]]; then
+            echo "::error::configure-pages failed. Check Pages settings and token permissions."
+            failed=1
+          fi
+
+          if [[ "${{ steps.upload_pages.outcome }}" != "success" ]]; then
+            echo "::error::upload-pages-artifact failed. Check artifact constraints above."
+            failed=1
+          fi
+
+          if [[ "${{ steps.deployment.outcome }}" != "success" ]]; then
+            echo "::error::deploy-pages failed. Check the postmortem sections above, especially Pages API output, artifacts, and deployment records."
+            failed=1
+          fi
+
+          exit "${failed}"
