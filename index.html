@@ -774,7 +774,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     <li>Use the <strong>Theme</strong> switch to change between dark and light mode.</li>
     <li>Download one output PDF from its column, download a single merged PDF, or download all output PDFs as one ZIP.</li>
   </ol>
-  <p>Notes: the app runs in your browser. It does not upload your PDFs to a server. Encrypted or unusual PDFs may not be editable in some browsers.</p>
+  <p>Notes: the app runs in your browser and does not upload your PDFs to a server. Permission-protected PDFs are flattened to page images during export so their visible content is preserved; text on those pages will no longer be selectable.</p>
   <div class="modal-actions"><button id="closeHelpBtn" class="primary">Close</button></div>
 </dialog>
 
@@ -785,6 +785,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   'use strict';
 
   const PDF_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const RASTER_EXPORT_DPI = 180;
+  const MAX_RASTER_EXPORT_PIXELS = 16000000;
+  const MAX_RASTER_EXPORT_DIMENSION = 8192;
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -858,7 +861,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function setBusy(flag, text) {
     state.busy = flag;
-    [els.uploadBtn, els.newDocBtn, els.downloadMergedBtn, els.downloadZipBtn, els.clearBtn].forEach(btn => btn.disabled = flag);
+    document.body.classList.toggle('is-busy', flag);
+    [
+      els.uploadBtn,
+      els.newDocBtn,
+      els.downloadMergedBtn,
+      els.downloadZipBtn,
+      els.clearBtn,
+      els.moveSelectedBtn,
+      els.copySelectedBtn,
+      els.downloadSelectedBtn,
+      els.deleteSelectedBtn,
+      els.clearSelectionBtn
+    ].filter(Boolean).forEach(btn => btn.disabled = flag);
     if (text) setStatus(text, flag ? 'warn' : 'ok');
   }
 
@@ -1070,6 +1085,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   async function handleFiles(fileList) {
+    if (state.busy) {
+      toast('Another operation is already in progress.');
+      return;
+    }
     const pdfs = Array.from(fileList || []).filter(file => file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)));
     if (!pdfs.length) {
       toast('No PDF files found.');
@@ -1087,25 +1106,33 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     setBusy(true, `Loading ${pdfs.length} PDF file${pdfs.length === 1 ? '' : 's'}...`);
     const failures = [];
     let loaded = 0;
-    for (const file of pdfs) {
-      try {
-        await loadPdfFile(file);
-        loaded += 1;
-        setStatus(`Loaded ${loaded} of ${pdfs.length}: ${file.name}`, 'warn');
-      } catch (err) {
-        console.error(err);
-        failures.push(`${file.name}: ${err.message}`);
+    let rasterSources = 0;
+    try {
+      for (const file of pdfs) {
+        try {
+          const source = await loadPdfFile(file);
+          loaded += 1;
+          if (source.requiresRasterExport) rasterSources += 1;
+          setStatus(`Loaded ${loaded} of ${pdfs.length}: ${file.name}`, 'warn');
+        } catch (err) {
+          console.error(err);
+          failures.push(`${file.name}: ${err.message}`);
+        }
       }
-    }
-    syncFromDom();
-    updateEmptyState();
-    setBusy(false);
-    if (failures.length) {
-      setStatus(`Loaded ${loaded}. ${failures.length} failed.`, 'err');
-      toast(failures.join(' | '));
-    } else {
-      setStatus(`Loaded ${loaded} PDF file${loaded === 1 ? '' : 's'}.`, 'ok');
-      toast('PDFs loaded. Drag pages to reorganize them.');
+      syncFromDom();
+      updateEmptyState();
+      if (failures.length) {
+        setStatus(`Loaded ${loaded}. ${failures.length} failed.`, 'err');
+        toast(failures.join(' | '));
+      } else if (rasterSources) {
+        setStatus(`Loaded ${loaded} PDF file${loaded === 1 ? '' : 's'}. ${rasterSources} file${rasterSources === 1 ? '' : 's'} need${rasterSources === 1 ? 's' : ''} rendered fallback on export.`, 'warn');
+        toast('PDFs loaded. Protected or unusual pages will be flattened to preserve their visible content.');
+      } else {
+        setStatus(`Loaded ${loaded} PDF file${loaded === 1 ? '' : 's'}.`, 'ok');
+        toast('PDFs loaded. Drag pages to reorganize them.');
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -1119,28 +1146,48 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       bytes,
       pdfLibDoc: null,
       pdfJsDoc: null,
-      pageCount: 0
+      pdfLibPageCount: 0,
+      pdfJsPageCount: 0,
+      pageCount: 0,
+      isEncrypted: false,
+      requiresRasterExport: false
     };
 
-    source.pdfLibDoc = await window.PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
-    source.pageCount = source.pdfLibDoc.getPageCount();
+    try {
+      source.pdfLibDoc = await window.PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+      source.pdfLibPageCount = source.pdfLibDoc.getPageCount();
+      source.isEncrypted = Boolean(source.pdfLibDoc.isEncrypted);
+      source.pageCount = source.pdfLibPageCount;
 
-    if (window.pdfjsLib) {
-      try {
-        const previewBytes = new Uint8Array(bytes);
-        const task = window.pdfjsLib.getDocument({ data: previewBytes, disableFontFace: false });
-        source.pdfJsDoc = await task.promise;
-        source.pageCount = Math.max(source.pageCount, source.pdfJsDoc.numPages || 0);
-      } catch (err) {
-        console.warn('PDF.js preview failed for', file.name, err);
+      if (window.pdfjsLib) {
+        try {
+          // PDF.js generally transfers TypedArray ownership to its worker. Give it an
+          // independent copy so the source bytes remain available for later exports.
+          const previewBytes = bytes.slice();
+          const task = window.pdfjsLib.getDocument({ data: previewBytes, disableFontFace: false, isEvalSupported: false });
+          source.pdfJsDoc = await task.promise;
+          source.pdfJsPageCount = source.pdfJsDoc.numPages || 0;
+          source.pageCount = Math.max(source.pageCount, source.pdfJsPageCount);
+        } catch (err) {
+          console.warn('PDF.js preview failed for', file.name, err);
+        }
       }
-    }
 
-    if (!source.pageCount) throw new Error('No pages found.');
+      if (!source.pageCount) throw new Error('No pages found.');
+
+      source.requiresRasterExport = source.isEncrypted || source.pdfJsPageCount > source.pdfLibPageCount;
+      if (source.requiresRasterExport && !source.pdfJsDoc) {
+        throw new Error('This protected or unusual PDF needs PDF.js to preserve its visible content, but PDF.js could not open it.');
+      }
+    } catch (err) {
+      releaseSource(source);
+      throw err;
+    }
 
     state.sources.set(id, source);
     const pages = Array.from({ length: source.pageCount }, (_, i) => makePageRef(id, i));
     createDoc(sanitizeName(file.name), pages);
+    return source;
   }
 
   function createDoc(title = 'Untitled PDF', pages = []) {
@@ -1195,6 +1242,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
 
     article.addEventListener('click', event => {
+      if (state.busy) return;
       const btn = event.target.closest('button[data-action]');
       if (!btn) return;
       const action = btn.dataset.action;
@@ -1234,11 +1282,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     `;
 
     card.addEventListener('click', event => {
+      if (state.busy) return;
       const btn = event.target.closest('button[data-page-action]');
       if (btn) {
         event.stopPropagation();
         if (btn.dataset.pageAction === 'copy-one') duplicatePageInPlace(ref.id);
-        if (btn.dataset.pageAction === 'remove-one') removePageCards([ref.id]);
+        if (btn.dataset.pageAction === 'remove-one') {
+          removePageCards([ref.id]);
+          syncFromDom();
+          toast('Page removed.');
+        }
         return;
       }
       handlePageClick(event, card);
@@ -1278,6 +1331,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   function startPageDrag(event, card) {
+    if (state.busy) {
+      event.preventDefault();
+      return;
+    }
     const id = card.dataset.pageId;
     if (!state.selected.has(id)) selectOnly([id]);
     const ids = selectedIdsInDomOrder();
@@ -1289,6 +1346,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   function startDocDrag(event, docId, article) {
+    if (state.busy) {
+      event.preventDefault();
+      return;
+    }
     state.drag = { kind: 'doc', docId };
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', docId);
@@ -1607,6 +1668,40 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     refreshSelectedClasses();
   }
 
+  function releaseSource(source) {
+    if (!source) return;
+    try {
+      const result = source.pdfJsDoc?.destroy?.();
+      if (result && typeof result.catch === 'function') result.catch(() => {});
+    } catch {
+      // Ignore cleanup errors. The source is no longer used by the workspace.
+    }
+    source.pdfJsDoc = null;
+    source.pdfLibDoc = null;
+    source.bytes = null;
+  }
+
+  function pruneUnusedState() {
+    const activePageIds = new Set(state.docs.flatMap(doc => doc.pages.map(ref => ref.id)));
+    for (const id of state.pageRefs.keys()) {
+      if (!activePageIds.has(id)) state.pageRefs.delete(id);
+    }
+    for (const id of state.selected) {
+      if (!activePageIds.has(id)) state.selected.delete(id);
+    }
+    if (state.lastClickedPageId && !activePageIds.has(state.lastClickedPageId)) {
+      state.lastClickedPageId = null;
+    }
+
+    const activeSourceIds = new Set(Array.from(state.pageRefs.values(), ref => ref.sourceId));
+    for (const [sourceId, source] of state.sources) {
+      if (!activeSourceIds.has(sourceId)) {
+        releaseSource(source);
+        state.sources.delete(sourceId);
+      }
+    }
+  }
+
   function duplicateDoc(docId) {
     syncFromDom();
     const doc = getDoc(docId);
@@ -1645,6 +1740,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       updateDocVisuals(article);
     });
     state.docs = docs;
+    pruneUnusedState();
     refreshSelectedClasses();
     updateEmptyState();
   }
@@ -1787,6 +1883,77 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (line) ctx.fillText(line, x, y);
   }
 
+  function rasterExportScale(viewport) {
+    const width = Number(viewport.width);
+    const height = Number(viewport.height);
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      throw new Error('Cannot export a PDF page with invalid dimensions.');
+    }
+    const desired = RASTER_EXPORT_DPI / 72;
+    const pixelCap = Math.sqrt(MAX_RASTER_EXPORT_PIXELS / (width * height));
+    const dimensionCap = Math.min(MAX_RASTER_EXPORT_DIMENSION / width, MAX_RASTER_EXPORT_DIMENSION / height);
+    const scale = Math.min(desired, pixelCap, dimensionCap);
+    if (!Number.isFinite(scale) || scale <= 0) {
+      throw new Error('Cannot safely rasterize this PDF page.');
+    }
+    return scale;
+  }
+
+  function canvasToBlob(canvas, type = 'image/png') {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('The browser could not encode a rendered PDF page.'));
+      }, type);
+    });
+  }
+
+  async function addRasterizedPage(out, source, pageIndex) {
+    if (!source.pdfJsDoc) {
+      throw new Error(`Cannot preserve page ${pageIndex + 1} from ${source.name}: PDF.js rendering is unavailable.`);
+    }
+
+    const page = await source.pdfJsDoc.getPage(pageIndex + 1);
+    const baseViewport = page.getViewport({ scale: 1 });
+    if (!Number.isFinite(baseViewport.width) || !Number.isFinite(baseViewport.height) || baseViewport.width <= 0 || baseViewport.height <= 0) {
+      throw new Error(`Cannot export page ${pageIndex + 1} from ${source.name}: invalid page dimensions.`);
+    }
+
+    const scale = rasterExportScale(baseViewport);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.ceil(viewport.width));
+    canvas.height = Math.max(1, Math.ceil(viewport.height));
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) throw new Error('The browser could not create a canvas for PDF export.');
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    try {
+      await page.render({
+        canvasContext: ctx,
+        viewport,
+        intent: 'print',
+        background: '#ffffff'
+      }).promise;
+      const pngBlob = await canvasToBlob(canvas);
+      const png = await out.embedPng(await pngBlob.arrayBuffer());
+      const outputPage = out.addPage([baseViewport.width, baseViewport.height]);
+      outputPage.drawImage(png, {
+        x: 0,
+        y: 0,
+        width: baseViewport.width,
+        height: baseViewport.height
+      });
+    } finally {
+      canvas.width = 1;
+      canvas.height = 1;
+    }
+  }
+
   async function buildPdfBlob(pageRefs) {
     requirePdfLib();
     if (!pageRefs.length) throw new Error('There are no pages to export.');
@@ -1795,19 +1962,33 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     for (const ref of pageRefs) {
       const source = sourceFor(ref);
       if (!source) throw new Error('A source PDF is missing from memory.');
-      let srcDoc = srcCache.get(ref.sourceId);
-      if (!srcDoc) {
-        srcDoc = source.pdfLibDoc || await window.PDFLib.PDFDocument.load(source.bytes, { ignoreEncryption: true });
-        srcCache.set(ref.sourceId, srcDoc);
+
+      const mustRasterize = source.isEncrypted || ref.pageIndex >= source.pdfLibPageCount;
+      if (mustRasterize) {
+        await addRasterizedPage(out, source, ref.pageIndex);
+        continue;
       }
-      const [copied] = await out.copyPages(srcDoc, [ref.pageIndex]);
-      out.addPage(copied);
+
+      try {
+        let srcDoc = srcCache.get(ref.sourceId);
+        if (!srcDoc) {
+          srcDoc = source.pdfLibDoc || await window.PDFLib.PDFDocument.load(source.bytes);
+          srcCache.set(ref.sourceId, srcDoc);
+        }
+        const [copied] = await out.copyPages(srcDoc, [ref.pageIndex]);
+        out.addPage(copied);
+      } catch (err) {
+        if (!source.pdfJsDoc) throw err;
+        console.warn(`Vector copy failed for ${source.name} page ${ref.pageIndex + 1}; using rendered fallback.`, err);
+        await addRasterizedPage(out, source, ref.pageIndex);
+      }
     }
     const bytes = await out.save({ useObjectStreams: true });
     return new Blob([bytes], { type: 'application/pdf' });
   }
 
   async function downloadDoc(docId) {
+    if (state.busy) return;
     syncFromDom();
     const doc = getDoc(docId);
     if (!doc) return;
@@ -1820,6 +2001,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   async function downloadSelected() {
+    if (state.busy) return;
     const ids = selectedIdsInDomOrder();
     if (!ids.length) return toast('Select at least one page.');
     const refs = ids.map(id => state.pageRefs.get(id)).filter(Boolean);
@@ -1831,6 +2013,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   async function downloadMerged() {
+    if (state.busy) return;
     syncFromDom();
     const pages = state.docs.flatMap(doc => doc.pages);
     if (!pages.length) return toast('There are no pages to merge.');
@@ -1842,6 +2025,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   async function downloadZip() {
+    if (state.busy) return;
     syncFromDom();
     const docs = state.docs.filter(doc => doc.pages.length);
     if (!docs.length) return toast('There are no output PDFs to download.');
@@ -1864,6 +2048,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   async function withExportBusy(label, fn) {
+    if (state.busy) return;
     try {
       setBusy(true, label);
       await fn();
@@ -1887,17 +2072,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     window.setTimeout(() => {
       URL.revokeObjectURL(url);
       a.remove();
-    }, 1200);
+    }, 30000);
   }
 
   function clearWorkspace() {
+    if (state.busy) return;
     if (state.docs.length && !window.confirm('Clear all loaded PDFs and output columns from this workspace?')) return;
+    state.thumbEpoch += 1;
+    state.thumbQueue = [];
+    for (const source of state.sources.values()) releaseSource(source);
     state.sources.clear();
     state.docs = [];
     state.pageRefs.clear();
     state.selected.clear();
     state.lastClickedPageId = null;
-    state.thumbQueue = [];
     $$('.doc-card').forEach(el => el.remove());
     refreshSelectedClasses();
     updateEmptyState();
@@ -1914,14 +2102,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     ['dragenter', 'dragover'].forEach(type => {
       els.fileDrop.addEventListener(type, event => {
-        if (state.drag) return;
+        if (state.drag || state.busy) return;
         event.preventDefault();
         els.fileDrop.classList.add('dragover');
       });
     });
     ['dragleave', 'drop'].forEach(type => {
       els.fileDrop.addEventListener(type, event => {
-        if (state.drag) return;
+        if (state.drag || state.busy) return;
         event.preventDefault();
         if (type === 'drop') handleFiles(event.dataTransfer.files);
         els.fileDrop.classList.remove('dragover');
@@ -1931,6 +2119,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function bindButtons() {
     els.newDocBtn.addEventListener('click', () => {
+      if (state.busy) return;
       const doc = createDoc('Untitled output', []);
       syncFromDom();
       const article = docCard(doc.id);
@@ -1953,6 +2142,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function bindKeyboard() {
     document.addEventListener('keydown', event => {
+      if (state.busy) return;
       const active = document.activeElement;
       const isTyping = active && ['INPUT', 'TEXTAREA'].includes(active.tagName);
       if (isTyping) return;
