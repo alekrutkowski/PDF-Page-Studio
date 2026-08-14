@@ -3,6 +3,1481 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="text/plain" id="pdfPageStudioMobileSource">
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PDF Page Studio – Mobile</title>
+<meta name="description" content="A touch-friendly browser interface for splitting, merging, rearranging, copying, and moving PDF pages across files.">
+<meta name="theme-color" content="#0f172a" id="themeColorMeta">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='8' y1='6' x2='58' y2='58' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%2338bdf8'/%3E%3Cstop offset='1' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='15' fill='%230f172a'/%3E%3Cpath d='M18 10h22l10 10v34H18z' fill='url(%23g)'/%3E%3Cpath d='M40 10v10h10' fill='%23e0f2fe' opacity='.8'/%3E%3Cpath d='M24 30h20M24 38h20M24 46h12' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f172a;
+    --bg-deep: #070c18;
+    --panel: rgba(15, 23, 42, .88);
+    --panel-solid: #111827;
+    --panel-2: #172033;
+    --card: #f8fafc;
+    --ink: #e5e7eb;
+    --muted: #94a3b8;
+    --line: rgba(255,255,255,.13);
+    --accent: #38bdf8;
+    --accent-2: #a78bfa;
+    --danger: #fb7185;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --page-ink: #0f172a;
+    --page-muted: #475569;
+    --control: rgba(255,255,255,.09);
+    --control-hover: rgba(255,255,255,.14);
+    --shadow: 0 18px 50px rgba(0,0,0,.32);
+    --radius: 20px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
+    --bg: #eef2ff;
+    --bg-deep: #f8fafc;
+    --panel: rgba(255,255,255,.9);
+    --panel-solid: #ffffff;
+    --panel-2: #f1f5f9;
+    --ink: #0f172a;
+    --muted: #475569;
+    --line: rgba(15,23,42,.14);
+    --control: rgba(15,23,42,.06);
+    --control-hover: rgba(15,23,42,.1);
+    --shadow: 0 18px 46px rgba(15,23,42,.14);
+  }
+
+  * { box-sizing: border-box; }
+  html { min-height: 100%; scroll-behavior: smooth; }
+  body {
+    min-height: 100%;
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 0 0, rgba(56,189,248,.18), transparent 28rem),
+      radial-gradient(circle at 100% 0, rgba(167,139,250,.18), transparent 26rem),
+      linear-gradient(180deg, var(--bg-deep), var(--bg) 38rem);
+    font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
+  }
+  body.selection-open { padding-bottom: calc(14.5rem + var(--safe-bottom)); }
+  body.is-busy { cursor: progress; }
+
+  button, input, select { font: inherit; }
+  button, .link-button, select, input[type="text"] { min-height: 44px; }
+  button, .link-button {
+    border: 1px solid transparent;
+    border-radius: 14px;
+    padding: .68rem .9rem;
+    color: #07111f;
+    background: #e5e7eb;
+    font-weight: 800;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  button:active, .link-button:active { transform: scale(.985); }
+  button:disabled { opacity: .48; cursor: not-allowed; transform: none; }
+  button.primary, .link-button.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  button.secondary, .link-button.secondary { color: var(--ink); background: var(--control); border-color: var(--line); }
+  button.danger { color: #fecdd3; background: rgba(251,113,133,.16); border-color: rgba(251,113,133,.4); }
+  html[data-theme="light"] button.danger { color: #9f1239; }
+  button.icon, .link-button.icon { width: 44px; padding: 0; display: inline-grid; place-items: center; font-size: 1.1rem; text-decoration: none; }
+  button.compact { min-height: 44px; padding: .52rem .68rem; font-size: .86rem; }
+  button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+    outline: 3px solid rgba(56,189,248,.55);
+    outline-offset: 2px;
+  }
+
+  a { color: var(--accent); }
+  .skip-link { position: fixed; left: .75rem; top: -5rem; z-index: 100; padding: .7rem 1rem; border-radius: 12px; background: var(--panel-solid); }
+  .skip-link:focus { top: calc(.75rem + var(--safe-top)); }
+
+  .app-shell {
+    width: min(100%, 68rem);
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: calc(.8rem + var(--safe-top)) calc(.8rem + var(--safe-right)) calc(2rem + var(--safe-bottom)) calc(.8rem + var(--safe-left));
+  }
+
+  .app-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: .75rem;
+    margin-bottom: .8rem;
+  }
+  .brand h1 { margin: 0; font-size: clamp(1.45rem, 7vw, 2rem); line-height: 1.05; letter-spacing: -.045em; }
+  .brand p { margin: .32rem 0 0; color: var(--muted); max-width: 42rem; font-size: .92rem; }
+  .header-actions { display: flex; gap: .45rem; }
+
+  .panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(14px);
+  }
+
+  .upload-panel { padding: .8rem; margin-bottom: .8rem; }
+  .upload-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .65rem; align-items: stretch; }
+  .dropzone {
+    min-height: 76px;
+    display: grid;
+    place-items: center;
+    padding: .8rem;
+    border: 1px dashed rgba(226,232,240,.34);
+    border-radius: 15px;
+    color: var(--muted);
+    text-align: center;
+    background: rgba(255,255,255,.035);
+  }
+  html[data-theme="light"] .dropzone { border-color: rgba(15,23,42,.22); }
+  .dropzone strong { color: var(--ink); }
+  .dropzone.dragover { border-color: var(--accent); color: var(--ink); background: rgba(56,189,248,.12); }
+  .upload-main { min-width: 7.5rem; }
+  .global-actions { display: flex; gap: .5rem; overflow-x: auto; padding: .7rem 0 .15rem; scrollbar-width: none; }
+  .global-actions::-webkit-scrollbar { display: none; }
+  .global-actions button { flex: 0 0 auto; }
+  .status {
+    display: flex;
+    align-items: flex-start;
+    gap: .55rem;
+    min-height: 1.5rem;
+    padding-top: .65rem;
+    color: var(--muted);
+    font-size: .88rem;
+  }
+  .status-dot { width: .65rem; height: .65rem; flex: 0 0 auto; margin-top: .28rem; border-radius: 999px; background: var(--muted); }
+  .status.ok .status-dot { background: var(--ok); }
+  .status.warn .status-dot { background: var(--warn); }
+  .status.err .status-dot { background: var(--danger); }
+
+  .doc-strip-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: 0 -.8rem .8rem;
+    padding: .55rem .8rem;
+    background: linear-gradient(180deg, var(--bg) 72%, transparent);
+  }
+  .doc-strip-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .55rem; padding: .55rem; }
+  .doc-strip { display: flex; gap: .45rem; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .doc-strip::-webkit-scrollbar { display: none; }
+  .doc-tab {
+    min-width: 9.5rem;
+    max-width: 14rem;
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .45rem;
+    padding: .6rem .7rem;
+    color: var(--ink);
+    background: var(--control);
+    border-color: var(--line);
+    scroll-snap-align: start;
+    text-align: left;
+  }
+  .doc-tab[aria-current="true"] { background: rgba(56,189,248,.16); border-color: rgba(56,189,248,.55); }
+  .doc-tab-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-tab-count { min-width: 1.8rem; padding: .12rem .38rem; border-radius: 999px; text-align: center; color: var(--muted); background: var(--control); font-size: .78rem; }
+
+  .empty-state { padding: clamp(1.2rem, 6vw, 2rem); text-align: center; }
+  .empty-state h2 { margin: 0 0 .4rem; }
+  .empty-state p { margin: 0 auto 1rem; max-width: 36rem; color: var(--muted); }
+
+  .doc-view { overflow: hidden; }
+  .doc-head { padding: .8rem; border-bottom: 1px solid var(--line); }
+  .doc-name-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .55rem; align-items: center; }
+  .doc-name {
+    width: 100%;
+    padding: .65rem .75rem;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    color: var(--ink);
+    background: rgba(15,23,42,.52);
+    font-weight: 850;
+  }
+  html[data-theme="light"] .doc-name { background: rgba(248,250,252,.95); }
+  .doc-meta { color: var(--muted); font-size: .83rem; white-space: nowrap; }
+  .doc-actions { display: flex; gap: .45rem; overflow-x: auto; margin-top: .65rem; scrollbar-width: none; }
+  .doc-actions::-webkit-scrollbar { display: none; }
+  .doc-actions button { flex: 0 0 auto; }
+
+  .page-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .65rem;
+    padding: .7rem .8rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .page-toolbar-actions { display: flex; gap: .4rem; }
+
+  .page-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: .75rem;
+    padding: .8rem;
+  }
+  .page-grid.empty::before {
+    content: "This output PDF is empty";
+    min-height: 12rem;
+    display: grid;
+    place-items: center;
+    border: 1px dashed var(--line);
+    border-radius: 16px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .page-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(8.25rem, 42%) minmax(0, 1fr);
+    gap: .72rem;
+    padding: .7rem;
+    border: 2px solid transparent;
+    border-radius: 17px;
+    color: var(--page-ink);
+    background: var(--card);
+    box-shadow: 0 10px 25px rgba(0,0,0,.17);
+    touch-action: manipulation;
+  }
+  .page-card[aria-selected="true"] { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(56,189,248,.16), 0 12px 28px rgba(0,0,0,.2); }
+  .preview-wrap {
+    min-height: 11rem;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    border-radius: 11px;
+    background: #e2e8f0;
+  }
+  canvas.page-preview { display: block; max-width: 100%; max-height: 18rem; width: auto; height: auto; background: white; }
+  .page-details { min-width: 0; display: grid; align-content: start; gap: .38rem; }
+  .page-number { font-size: 1.02rem; font-weight: 900; }
+  .source-name { color: var(--page-muted); font-size: .82rem; overflow-wrap: anywhere; }
+  .original-page { color: #64748b; font-size: .78rem; }
+  .select-page { width: 100%; margin-top: .2rem; color: #0f172a; background: #e2e8f0; border-color: #cbd5e1; }
+  .select-page[aria-pressed="true"] { background: #bae6fd; border-color: #38bdf8; }
+  .page-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .38rem; margin-top: .2rem; }
+  .page-buttons button { min-height: 40px; padding: .48rem .42rem; border-radius: 11px; color: #0f172a; background: #e2e8f0; border-color: #cbd5e1; font-size: .8rem; }
+  .page-buttons button.remove { color: #9f1239; background: #ffe4e6; border-color: #fecdd3; }
+
+  .selection-tray {
+    position: fixed;
+    z-index: 60;
+    left: max(.65rem, var(--safe-left));
+    right: max(.65rem, var(--safe-right));
+    bottom: max(.65rem, var(--safe-bottom));
+    max-width: 66rem;
+    margin: 0 auto;
+    padding: .78rem;
+    border: 1px solid rgba(56,189,248,.4);
+    border-radius: 20px;
+    background: rgba(15,23,42,.96);
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    backdrop-filter: blur(16px);
+  }
+  html[data-theme="light"] .selection-tray { background: rgba(255,255,255,.97); }
+  .selection-summary { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-bottom: .6rem; }
+  .selection-summary strong { color: var(--accent); }
+  .selection-target-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .45rem; }
+  .selection-target-row select {
+    min-width: 0;
+    width: 100%;
+    padding: .6rem .7rem;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    color: var(--ink);
+    background: var(--panel-2);
+  }
+  .selection-extra { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; margin-top: .5rem; }
+  .selection-extra button { padding-inline: .5rem; }
+
+  dialog {
+    width: min(42rem, calc(100vw - 1.4rem));
+    max-height: calc(100dvh - 1.4rem);
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 1rem;
+    color: var(--ink);
+    background: var(--panel-solid);
+    box-shadow: var(--shadow);
+  }
+  dialog::backdrop { background: rgba(0,0,0,.68); }
+  dialog h2 { margin-top: 0; }
+  dialog li { margin: .5rem 0; }
+  .dialog-actions { display: flex; justify-content: flex-end; margin-top: 1rem; }
+
+  .toast {
+    position: fixed;
+    z-index: 80;
+    left: 50%;
+    bottom: calc(.8rem + var(--safe-bottom));
+    width: max-content;
+    max-width: calc(100vw - 1.5rem);
+    padding: .72rem .95rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink);
+    background: var(--panel-solid);
+    box-shadow: var(--shadow);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 130%);
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  body.selection-open .toast { bottom: calc(14.8rem + var(--safe-bottom)); }
+
+  .busy-overlay {
+    position: fixed;
+    z-index: 90;
+    inset: 0;
+    display: none;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(2,6,23,.58);
+    backdrop-filter: blur(5px);
+  }
+  body.is-busy .busy-overlay { display: grid; }
+  .busy-card { min-width: min(19rem, calc(100vw - 2rem)); padding: 1rem; border: 1px solid var(--line); border-radius: 18px; text-align: center; background: var(--panel-solid); box-shadow: var(--shadow); }
+  .spinner { width: 2rem; height: 2rem; margin: 0 auto .7rem; border: .24rem solid var(--line); border-top-color: var(--accent); border-radius: 999px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(1turn); } }
+
+  @media (min-width: 560px) {
+    body.selection-open { padding-bottom: calc(10.5rem + var(--safe-bottom)); }
+    .page-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .page-card { grid-template-columns: minmax(0, 1fr); }
+    .preview-wrap { min-height: 16rem; }
+    canvas.page-preview { max-height: 24rem; }
+    .page-details { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+    .page-details .source-name, .page-details .original-page, .page-details .select-page, .page-details .page-buttons { grid-column: 1 / -1; }
+    .selection-tray { display: grid; grid-template-columns: auto minmax(18rem, 1fr); gap: .7rem; align-items: center; }
+    .selection-summary { margin: 0; }
+    .selection-controls { min-width: 0; }
+    .selection-extra { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    body.selection-open .toast { bottom: calc(10.8rem + var(--safe-bottom)); }
+  }
+
+  @media (max-width: 430px) {
+    .app-header { grid-template-columns: 1fr; }
+    .header-actions { justify-content: flex-start; }
+    .brand p { font-size: .86rem; }
+    .upload-row { grid-template-columns: 1fr; }
+    .upload-main { width: 100%; }
+    .dropzone { min-height: 64px; }
+    .doc-strip-panel { grid-template-columns: minmax(0, 1fr) auto; }
+    .page-card { grid-template-columns: minmax(7.4rem, 40%) minmax(0, 1fr); }
+    .preview-wrap { min-height: 10rem; }
+    .selection-target-row { grid-template-columns: minmax(0, 1fr) repeat(2, auto); }
+    .selection-target-row button { padding-inline: .62rem; }
+    .selection-extra button { font-size: .78rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#workspaceMain">Skip to PDF pages</a>
+<div class="app-shell">
+  <header class="app-header">
+    <div class="brand">
+      <h1>PDF Page Studio</h1>
+      <p>Touch-friendly page editing. Tap pages to select them, then move, copy, split, delete, or download.</p>
+    </div>
+    <div class="header-actions">
+      <button id="themeBtn" class="secondary icon" type="button" aria-label="Switch theme" title="Switch theme">◐</button>
+      <button id="helpBtn" class="secondary icon" type="button" aria-label="How to use" title="How to use">?</button>
+      <a class="link-button secondary icon" href="index.html?view=desktop" aria-label="Open desktop interface" title="Desktop interface">↗</a>
+    </div>
+  </header>
+
+  <section class="panel upload-panel" aria-label="Upload and global actions">
+    <div class="upload-row">
+      <div id="fileDrop" class="dropzone">
+        <div><strong>Choose or drop PDF files</strong><br>Files stay in this browser.</div>
+      </div>
+      <button id="uploadBtn" class="primary upload-main" type="button">Upload PDFs</button>
+    </div>
+    <div class="global-actions" aria-label="Global PDF actions">
+      <button id="newDocBtn" class="secondary" type="button">New PDF</button>
+      <button id="downloadMergedBtn" class="primary" type="button">Merged PDF</button>
+      <button id="downloadZipBtn" class="secondary" type="button">All as ZIP</button>
+      <button id="clearBtn" class="danger" type="button">Clear</button>
+    </div>
+    <div id="status" class="status" role="status" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="statusText">Ready.</span>
+    </div>
+  </section>
+
+  <div id="docStripWrap" class="doc-strip-wrap" hidden>
+    <div class="panel doc-strip-panel">
+      <nav id="docStrip" class="doc-strip" aria-label="Output PDFs"></nav>
+      <button id="addDocBtn" class="primary icon" type="button" aria-label="Add empty output PDF" title="Add empty output PDF">+</button>
+    </div>
+  </div>
+
+  <main id="workspaceMain">
+    <section id="emptyState" class="panel empty-state">
+      <h2>No PDFs loaded</h2>
+      <p>Upload one or more PDF files. Each file starts as an output PDF, and all processing remains local to your browser.</p>
+      <button id="emptyUploadBtn" class="primary" type="button">Upload PDFs</button>
+    </section>
+
+    <section id="docView" class="panel doc-view" hidden aria-label="Current output PDF">
+      <div class="doc-head">
+        <div class="doc-name-row">
+          <input id="docName" class="doc-name" type="text" aria-label="Output PDF name" autocomplete="off">
+          <span id="docMeta" class="doc-meta"></span>
+        </div>
+        <div class="doc-actions" aria-label="Current PDF actions">
+          <button id="downloadCurrentBtn" class="primary compact" type="button">Download</button>
+          <button id="duplicateDocBtn" class="secondary compact" type="button">Duplicate PDF</button>
+          <button id="moveDocLeftBtn" class="secondary compact" type="button">Move left</button>
+          <button id="moveDocRightBtn" class="secondary compact" type="button">Move right</button>
+          <button id="removeDocBtn" class="danger compact" type="button">Remove PDF</button>
+        </div>
+      </div>
+      <div class="page-toolbar">
+        <span id="pageHint">Tap a page to select it.</span>
+        <div class="page-toolbar-actions">
+          <button id="selectAllBtn" class="secondary compact" type="button">Select all</button>
+          <button id="clearPageSelectionBtn" class="secondary compact" type="button" hidden>Clear</button>
+        </div>
+      </div>
+      <div id="pageGrid" class="page-grid" aria-label="Pages in current output PDF"></div>
+    </section>
+  </main>
+</div>
+
+<input id="fileInput" type="file" accept="application/pdf,.pdf" multiple hidden>
+
+<section id="selectionTray" class="selection-tray" aria-live="polite" hidden>
+  <div class="selection-summary">
+    <strong id="selectionCount">0 selected</strong>
+    <button id="clearSelectionBtn" class="secondary compact" type="button">Clear</button>
+  </div>
+  <div class="selection-controls">
+    <div class="selection-target-row">
+      <select id="targetDocSelect" aria-label="Destination output PDF"></select>
+      <button id="moveSelectedBtn" class="primary compact" type="button">Move</button>
+      <button id="copySelectedBtn" class="secondary compact" type="button">Copy</button>
+    </div>
+    <div class="selection-extra">
+      <button id="moveNewBtn" class="secondary compact" type="button">Split to new</button>
+      <button id="copyNewBtn" class="secondary compact" type="button">Copy to new</button>
+      <button id="downloadSelectedBtn" class="secondary compact" type="button">Download</button>
+      <button id="deleteSelectedBtn" class="danger compact" type="button">Delete</button>
+    </div>
+  </div>
+</section>
+
+<dialog id="helpDialog">
+  <h2>Mobile controls</h2>
+  <ol>
+    <li>Upload one or more PDFs. Each uploaded file starts as its own output PDF.</li>
+    <li>Use the tabs near the top to switch between output PDFs.</li>
+    <li>Tap a page card or its Select button. Selected pages can be moved, copied, split into a new PDF, deleted, or downloaded.</li>
+    <li>Use Earlier and Later on a page card to reorder pages without touch dragging.</li>
+    <li>Rename the current output in the name field. Use Move left and Move right to reorder output PDFs.</li>
+    <li>Download the current PDF, one merged PDF, or a ZIP containing every non-empty output PDF.</li>
+  </ol>
+  <p>PDF processing happens locally in this browser. Ordinary pages remain vector-based when possible. Pages that cannot be copied are rendered to an image during export so their visible content is retained.</p>
+  <div class="dialog-actions"><button id="closeHelpBtn" class="primary" type="button">Close</button></div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div class="busy-overlay" aria-hidden="true"><div class="busy-card"><div class="spinner"></div><strong id="busyText">Working…</strong></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\/script>
+<script>
+(() => {
+  'use strict';
+
+  const PDF_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const THEME_PREF_KEY = 'pdfPageStudioTheme';
+  const MAX_THUMB_PIXELS = 1500000;
+  const MAX_EXPORT_PIXELS = 16000000;
+  const MAX_EXPORT_DIMENSION = 8192;
+
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const els = {
+    fileInput: $('#fileInput'),
+    fileDrop: $('#fileDrop'),
+    uploadBtn: $('#uploadBtn'),
+    emptyUploadBtn: $('#emptyUploadBtn'),
+    newDocBtn: $('#newDocBtn'),
+    addDocBtn: $('#addDocBtn'),
+    downloadMergedBtn: $('#downloadMergedBtn'),
+    downloadZipBtn: $('#downloadZipBtn'),
+    clearBtn: $('#clearBtn'),
+    status: $('#status'),
+    statusText: $('#statusText'),
+    themeBtn: $('#themeBtn'),
+    helpBtn: $('#helpBtn'),
+    helpDialog: $('#helpDialog'),
+    closeHelpBtn: $('#closeHelpBtn'),
+    docStripWrap: $('#docStripWrap'),
+    docStrip: $('#docStrip'),
+    emptyState: $('#emptyState'),
+    docView: $('#docView'),
+    docName: $('#docName'),
+    docMeta: $('#docMeta'),
+    pageGrid: $('#pageGrid'),
+    pageHint: $('#pageHint'),
+    selectAllBtn: $('#selectAllBtn'),
+    clearPageSelectionBtn: $('#clearPageSelectionBtn'),
+    downloadCurrentBtn: $('#downloadCurrentBtn'),
+    duplicateDocBtn: $('#duplicateDocBtn'),
+    moveDocLeftBtn: $('#moveDocLeftBtn'),
+    moveDocRightBtn: $('#moveDocRightBtn'),
+    removeDocBtn: $('#removeDocBtn'),
+    selectionTray: $('#selectionTray'),
+    selectionCount: $('#selectionCount'),
+    targetDocSelect: $('#targetDocSelect'),
+    moveSelectedBtn: $('#moveSelectedBtn'),
+    copySelectedBtn: $('#copySelectedBtn'),
+    moveNewBtn: $('#moveNewBtn'),
+    copyNewBtn: $('#copyNewBtn'),
+    downloadSelectedBtn: $('#downloadSelectedBtn'),
+    deleteSelectedBtn: $('#deleteSelectedBtn'),
+    clearSelectionBtn: $('#clearSelectionBtn'),
+    toast: $('#toast'),
+    busyText: $('#busyText')
+  };
+
+  const state = {
+    sourceSeq: 0,
+    docSeq: 0,
+    pageSeq: 0,
+    sources: new Map(),
+    docs: [],
+    activeDocId: null,
+    selected: new Set(),
+    busy: false,
+    thumbObserver: null,
+    thumbGeneration: 0
+  };
+
+  function uid(prefix, sequenceName) {
+    state[sequenceName] += 1;
+    return `${prefix}${state[sequenceName].toString(36)}_${Date.now().toString(36)}`;
+  }
+
+  function activeDoc() {
+    return state.docs.find(doc => doc.id === state.activeDocId) || null;
+  }
+
+  function sourceFor(ref) {
+    return state.sources.get(ref.sourceId) || null;
+  }
+
+  function makePageRef(sourceId, pageIndex) {
+    return { id: uid('pg_', 'pageSeq'), sourceId, pageIndex };
+  }
+
+  function clonePageRef(ref) {
+    return makePageRef(ref.sourceId, ref.pageIndex);
+  }
+
+  function setStatus(text, kind = '') {
+    els.status.className = `status ${kind}`.trim();
+    els.statusText.textContent = text;
+  }
+
+  let toastTimer = 0;
+  function toast(text) {
+    window.clearTimeout(toastTimer);
+    els.toast.textContent = text;
+    els.toast.classList.add('show');
+    toastTimer = window.setTimeout(() => els.toast.classList.remove('show'), 2800);
+  }
+
+  function setBusy(flag, text = '') {
+    state.busy = flag;
+    document.body.classList.toggle('is-busy', flag);
+    if (text) els.busyText.textContent = text;
+    document.querySelectorAll('button, select, input').forEach(control => {
+      if (control === els.docName) return;
+      control.disabled = flag;
+    });
+    els.docName.disabled = flag || !activeDoc();
+    if (!flag) {
+      updateDocControls(activeDoc());
+      renderSelectionTray();
+    }
+  }
+
+  async function withBusy(text, task) {
+    if (state.busy) return;
+    setBusy(true, text);
+    setStatus(text, 'warn');
+    try {
+      return await task();
+    } catch (error) {
+      console.error(error);
+      const message = error instanceof Error ? error.message : String(error);
+      setStatus(message, 'err');
+      toast(message);
+      return undefined;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function requireLibraries({ zip = false } = {}) {
+    if (!window.PDFLib?.PDFDocument) throw new Error('pdf-lib did not load. Check the internet connection or host the library locally.');
+    if (!window.pdfjsLib) throw new Error('PDF.js did not load. Check the internet connection or host the library locally.');
+    if (zip && !window.JSZip) throw new Error('JSZip did not load. Check the internet connection or host the library locally.');
+  }
+
+  function storedTheme() {
+    try {
+      const stored = window.localStorage.getItem(THEME_PREF_KEY);
+      if (stored === 'light' || stored === 'dark') return stored;
+    } catch {}
+    return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+
+  function setTheme(theme, persist = true) {
+    const next = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    els.themeBtn.textContent = next === 'light' ? '☾' : '☀';
+    els.themeBtn.setAttribute('aria-label', next === 'light' ? 'Use dark theme' : 'Use light theme');
+    $('#themeColorMeta').setAttribute('content', next === 'light' ? '#f8fafc' : '#0f172a');
+    if (persist) {
+      try { window.localStorage.setItem(THEME_PREF_KEY, next); } catch {}
+    }
+  }
+
+  function toggleTheme() {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    toast(`${next[0].toUpperCase()}${next.slice(1)} theme enabled.`);
+  }
+
+  function sanitizeName(name) {
+    return (name || 'output')
+      .replace(/\.pdf$/i, '')
+      .replace(/[\\/:*?"<>|]+/g, '_')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 90) || 'output';
+  }
+
+  function uniqueFilename(base, used, extension = '.pdf') {
+    const clean = sanitizeName(base);
+    let filename = `${clean}${extension}`;
+    let suffix = 2;
+    while (used.has(filename.toLowerCase())) {
+      filename = `${clean} (${suffix})${extension}`;
+      suffix += 1;
+    }
+    used.add(filename.toLowerCase());
+    return filename;
+  }
+
+  function trimMiddle(text, max = 42) {
+    const value = String(text || '');
+    if (value.length <= max) return value;
+    const left = Math.ceil((max - 1) / 2);
+    const right = Math.floor((max - 1) / 2);
+    return `${value.slice(0, left)}…${value.slice(-right)}`;
+  }
+
+  function createDoc(title = 'Untitled PDF', pages = [], activate = true) {
+    const doc = { id: uid('doc_', 'docSeq'), title: sanitizeName(title), pages: pages.slice() };
+    state.docs.push(doc);
+    if (activate || !state.activeDocId) state.activeDocId = doc.id;
+    return doc;
+  }
+
+  function clearSelection(render = true) {
+    state.selected.clear();
+    if (render) {
+      renderPages();
+      renderSelectionTray();
+    }
+  }
+
+  function setActiveDoc(docId) {
+    if (!state.docs.some(doc => doc.id === docId)) return;
+    state.activeDocId = docId;
+    state.selected.clear();
+    renderAll();
+    window.scrollTo({ top: Math.max(0, els.docStripWrap.offsetTop - 8), behavior: 'smooth' });
+  }
+
+  function renderDocStrip() {
+    els.docStrip.textContent = '';
+    const hasDocs = state.docs.length > 0;
+    els.docStripWrap.hidden = !hasDocs;
+    state.docs.forEach(doc => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'doc-tab';
+      button.dataset.docId = doc.id;
+      button.setAttribute('aria-current', String(doc.id === state.activeDocId));
+
+      const title = document.createElement('span');
+      title.className = 'doc-tab-title';
+      title.textContent = doc.title;
+      title.title = doc.title;
+
+      const count = document.createElement('span');
+      count.className = 'doc-tab-count';
+      count.textContent = String(doc.pages.length);
+
+      button.append(title, count);
+      button.addEventListener('click', () => setActiveDoc(doc.id));
+      els.docStrip.appendChild(button);
+    });
+
+    requestAnimationFrame(() => {
+      const active = els.docStrip.querySelector('[aria-current="true"]');
+      active?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    });
+  }
+
+  function updateDocControls(doc) {
+    const index = doc ? state.docs.indexOf(doc) : -1;
+    els.moveDocLeftBtn.disabled = state.busy || index <= 0;
+    els.moveDocRightBtn.disabled = state.busy || index < 0 || index >= state.docs.length - 1;
+    els.downloadCurrentBtn.disabled = state.busy || !doc?.pages.length;
+    els.duplicateDocBtn.disabled = state.busy || !doc;
+    els.removeDocBtn.disabled = state.busy || !doc;
+    els.selectAllBtn.disabled = state.busy || !doc?.pages.length;
+  }
+
+  function renderAll() {
+    if (state.docs.length && !activeDoc()) state.activeDocId = state.docs[0].id;
+    const doc = activeDoc();
+    renderDocStrip();
+    els.emptyState.hidden = Boolean(doc);
+    els.docView.hidden = !doc;
+    els.docName.disabled = state.busy || !doc;
+
+    if (!doc) {
+      els.pageGrid.textContent = '';
+      renderSelectionTray();
+      updateDocControls(null);
+      return;
+    }
+
+    els.docName.value = doc.title;
+    els.docMeta.textContent = `${doc.pages.length} page${doc.pages.length === 1 ? '' : 's'}`;
+    updateDocControls(doc);
+    renderPages();
+    renderSelectionTray();
+  }
+
+  function renderPages() {
+    const doc = activeDoc();
+    state.thumbGeneration += 1;
+    if (state.thumbObserver) state.thumbObserver.disconnect();
+    setupThumbnailObserver();
+    els.pageGrid.textContent = '';
+    els.pageGrid.classList.toggle('empty', !doc?.pages.length);
+    if (!doc) return;
+
+    doc.pages.forEach((ref, index) => {
+      els.pageGrid.appendChild(createPageCard(ref, index, doc.pages.length));
+    });
+
+    const selectedCount = state.selected.size;
+    els.pageHint.textContent = selectedCount
+      ? `${selectedCount} page${selectedCount === 1 ? '' : 's'} selected.`
+      : 'Tap a page to select it.';
+    els.clearPageSelectionBtn.hidden = selectedCount === 0;
+  }
+
+  function createPageCard(ref, index, total) {
+    const source = sourceFor(ref);
+    const card = document.createElement('article');
+    card.className = 'page-card';
+    card.tabIndex = 0;
+    card.dataset.pageId = ref.id;
+    card.setAttribute('aria-selected', String(state.selected.has(ref.id)));
+    card.setAttribute('aria-label', `Output page ${index + 1}${source ? ` from ${source.name}` : ''}`);
+
+    const previewWrap = document.createElement('div');
+    previewWrap.className = 'preview-wrap';
+    const canvas = document.createElement('canvas');
+    canvas.className = 'page-preview';
+    canvas.width = 150;
+    canvas.height = 194;
+    canvas.setAttribute('aria-label', `Preview of page ${index + 1}`);
+    drawPlaceholder(canvas, index + 1, false);
+    previewWrap.appendChild(canvas);
+
+    const details = document.createElement('div');
+    details.className = 'page-details';
+
+    const pageNumber = document.createElement('div');
+    pageNumber.className = 'page-number';
+    pageNumber.textContent = `Page ${index + 1}`;
+
+    const sourceName = document.createElement('div');
+    sourceName.className = 'source-name';
+    sourceName.textContent = `Source: ${trimMiddle(source?.name || 'Unknown source')}`;
+    sourceName.title = source?.name || '';
+
+    const originalPage = document.createElement('div');
+    originalPage.className = 'original-page';
+    originalPage.textContent = `Original page ${ref.pageIndex + 1}`;
+
+    const selectButton = document.createElement('button');
+    selectButton.type = 'button';
+    selectButton.className = 'select-page';
+    selectButton.dataset.action = 'select';
+    selectButton.setAttribute('aria-pressed', String(state.selected.has(ref.id)));
+    selectButton.textContent = state.selected.has(ref.id) ? 'Selected' : 'Select';
+
+    const buttons = document.createElement('div');
+    buttons.className = 'page-buttons';
+    buttons.innerHTML = `
+      <button type="button" data-action="earlier" ${index === 0 ? 'disabled' : ''}>Earlier</button>
+      <button type="button" data-action="later" ${index === total - 1 ? 'disabled' : ''}>Later</button>
+      <button type="button" data-action="duplicate">Duplicate</button>
+      <button type="button" class="remove" data-action="remove">Remove</button>
+    `;
+
+    details.append(pageNumber, sourceName, originalPage, selectButton, buttons);
+    card.append(previewWrap, details);
+
+    const toggle = () => togglePageSelection(ref.id);
+    card.addEventListener('click', event => {
+      if (state.busy) return;
+      const actionButton = event.target.closest('button[data-action]');
+      if (!actionButton) return toggle();
+      event.stopPropagation();
+      const action = actionButton.dataset.action;
+      if (action === 'select') toggle();
+      if (action === 'earlier') movePage(ref.id, -1);
+      if (action === 'later') movePage(ref.id, 1);
+      if (action === 'duplicate') duplicatePage(ref.id);
+      if (action === 'remove') removePage(ref.id);
+    });
+    card.addEventListener('keydown', event => {
+      if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('button')) {
+        event.preventDefault();
+        toggle();
+      }
+    });
+
+    canvas.dataset.pageId = ref.id;
+    state.thumbObserver.observe(canvas);
+    return card;
+  }
+
+  function setupThumbnailObserver() {
+    const generation = state.thumbGeneration;
+    state.thumbObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const canvas = entry.target;
+        state.thumbObserver.unobserve(canvas);
+        const doc = activeDoc();
+        const ref = doc?.pages.find(page => page.id === canvas.dataset.pageId);
+        if (ref) renderThumbnail(ref, canvas, generation);
+      });
+    }, { rootMargin: '420px 0px' });
+  }
+
+  async function renderThumbnail(ref, canvas, generation) {
+    const source = sourceFor(ref);
+    if (!source?.pdfJsDoc || !canvas.isConnected || generation !== state.thumbGeneration) return;
+    try {
+      canvas.dataset.state = 'rendering';
+      const page = await source.pdfJsDoc.getPage(ref.pageIndex + 1);
+      if (!canvas.isConnected || generation !== state.thumbGeneration) return;
+      const base = page.getViewport({ scale: 1 });
+      const parentWidth = Math.max(120, canvas.parentElement?.clientWidth || 180);
+      const cssScale = parentWidth / Math.max(1, base.width);
+      const cssViewport = page.getViewport({ scale: cssScale });
+      const dpr = Math.max(1, Math.min(2.5, Number(window.devicePixelRatio) || 1));
+      const pixelCap = Math.sqrt(MAX_THUMB_PIXELS / Math.max(1, cssViewport.width * cssViewport.height));
+      const outputScale = Math.max(1, Math.min(dpr, pixelCap));
+      const renderViewport = page.getViewport({ scale: cssScale * outputScale });
+      const context = canvas.getContext('2d', { alpha: false });
+      canvas.width = Math.max(1, Math.round(renderViewport.width));
+      canvas.height = Math.max(1, Math.round(renderViewport.height));
+      canvas.style.width = `${Math.round(cssViewport.width)}px`;
+      canvas.style.height = `${Math.round(cssViewport.height)}px`;
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: context, viewport: renderViewport }).promise;
+      canvas.dataset.state = 'ready';
+    } catch (error) {
+      console.warn('Thumbnail rendering failed.', error);
+      drawPlaceholder(canvas, ref.pageIndex + 1, true);
+    }
+  }
+
+  function drawPlaceholder(canvas, pageNumber, failed) {
+    const width = 150;
+    const height = 194;
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = '100%';
+    canvas.style.height = 'auto';
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
+    context.strokeStyle = failed ? '#fb7185' : '#94a3b8';
+    context.lineWidth = 2;
+    context.strokeRect(10, 10, width - 20, height - 20);
+    context.fillStyle = '#0f172a';
+    context.font = '700 16px system-ui';
+    context.textAlign = 'center';
+    context.fillText(failed ? 'Preview unavailable' : `Page ${pageNumber}`, width / 2, height / 2);
+  }
+
+  function togglePageSelection(pageId) {
+    if (state.selected.has(pageId)) state.selected.delete(pageId);
+    else state.selected.add(pageId);
+    renderPages();
+    renderSelectionTray();
+  }
+
+  function selectAllPages() {
+    const doc = activeDoc();
+    if (!doc) return;
+    doc.pages.forEach(ref => state.selected.add(ref.id));
+    renderPages();
+    renderSelectionTray();
+  }
+
+  function selectedRefs() {
+    const doc = activeDoc();
+    return doc ? doc.pages.filter(ref => state.selected.has(ref.id)) : [];
+  }
+
+  function renderSelectionTray() {
+    const refs = selectedRefs();
+    state.selected = new Set(refs.map(ref => ref.id));
+    const count = refs.length;
+    els.selectionTray.hidden = count === 0;
+    document.body.classList.toggle('selection-open', count > 0);
+    els.selectionCount.textContent = `${count} page${count === 1 ? '' : 's'} selected`;
+    els.clearPageSelectionBtn.hidden = count === 0;
+
+    const currentValue = els.targetDocSelect.value;
+    els.targetDocSelect.textContent = '';
+    state.docs.forEach(doc => {
+      const option = document.createElement('option');
+      option.value = doc.id;
+      option.textContent = doc.id === state.activeDocId ? `${doc.title} (current)` : doc.title;
+      els.targetDocSelect.appendChild(option);
+    });
+    if (state.docs.some(doc => doc.id === currentValue)) els.targetDocSelect.value = currentValue;
+    else if (state.docs.length > 1) els.targetDocSelect.value = state.docs.find(doc => doc.id !== state.activeDocId)?.id || state.activeDocId;
+    else els.targetDocSelect.value = state.activeDocId || '';
+
+    const canTransfer = count > 0 && Boolean(els.targetDocSelect.value);
+    els.moveSelectedBtn.disabled = state.busy || !canTransfer;
+    els.copySelectedBtn.disabled = state.busy || !canTransfer;
+    els.moveNewBtn.disabled = state.busy || count === 0;
+    els.copyNewBtn.disabled = state.busy || count === 0;
+    els.downloadSelectedBtn.disabled = state.busy || count === 0;
+    els.deleteSelectedBtn.disabled = state.busy || count === 0;
+  }
+
+  function movePage(pageId, direction) {
+    const doc = activeDoc();
+    if (!doc) return;
+    const index = doc.pages.findIndex(ref => ref.id === pageId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= doc.pages.length) return;
+    const [ref] = doc.pages.splice(index, 1);
+    doc.pages.splice(nextIndex, 0, ref);
+    renderAll();
+    requestAnimationFrame(() => {
+      const card = els.pageGrid.querySelector(`[data-page-id="${CSS.escape(pageId)}"]`);
+      card?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  }
+
+  function duplicatePage(pageId) {
+    const doc = activeDoc();
+    if (!doc) return;
+    const index = doc.pages.findIndex(ref => ref.id === pageId);
+    if (index < 0) return;
+    doc.pages.splice(index + 1, 0, clonePageRef(doc.pages[index]));
+    renderAll();
+    toast('Page duplicated.');
+  }
+
+  function removePage(pageId) {
+    const doc = activeDoc();
+    if (!doc) return;
+    doc.pages = doc.pages.filter(ref => ref.id !== pageId);
+    state.selected.delete(pageId);
+    renderAll();
+    toast('Page removed.');
+  }
+
+  function transferSelected(copy) {
+    const sourceDoc = activeDoc();
+    const targetDoc = state.docs.find(doc => doc.id === els.targetDocSelect.value);
+    const refs = selectedRefs();
+    if (!sourceDoc || !targetDoc || !refs.length) return;
+
+    if (targetDoc.id === sourceDoc.id) {
+      if (!copy) {
+        toast('Choose another PDF, or use Split to new.');
+        return;
+      }
+      targetDoc.pages.push(...refs.map(clonePageRef));
+      state.selected.clear();
+      renderAll();
+      toast(`${refs.length} page${refs.length === 1 ? '' : 's'} copied to the end.`);
+      return;
+    }
+
+    targetDoc.pages.push(...(copy ? refs.map(clonePageRef) : refs));
+    if (!copy) sourceDoc.pages = sourceDoc.pages.filter(ref => !state.selected.has(ref.id));
+    state.selected.clear();
+    renderAll();
+    toast(`${refs.length} page${refs.length === 1 ? '' : 's'} ${copy ? 'copied' : 'moved'} to ${targetDoc.title}.`);
+  }
+
+  function splitSelectedToNewDoc() {
+    const sourceDoc = activeDoc();
+    const refs = selectedRefs();
+    if (!sourceDoc || !refs.length) return;
+    sourceDoc.pages = sourceDoc.pages.filter(ref => !state.selected.has(ref.id));
+    const newDoc = createDoc('Split output', refs, true);
+    state.selected.clear();
+    renderAll();
+    toast(`${refs.length} page${refs.length === 1 ? '' : 's'} moved to ${newDoc.title}.`);
+  }
+
+  function copySelectedToNewDoc() {
+    const refs = selectedRefs();
+    if (!refs.length) return;
+    const newDoc = createDoc('Copied pages', refs.map(clonePageRef), true);
+    state.selected.clear();
+    renderAll();
+    toast(`${refs.length} page${refs.length === 1 ? '' : 's'} copied to ${newDoc.title}.`);
+  }
+
+  function deleteSelected() {
+    const doc = activeDoc();
+    const refs = selectedRefs();
+    if (!doc || !refs.length) return;
+    if (!window.confirm(`Remove ${refs.length} selected page${refs.length === 1 ? '' : 's'} from the workspace?`)) return;
+    doc.pages = doc.pages.filter(ref => !state.selected.has(ref.id));
+    state.selected.clear();
+    renderAll();
+    toast('Selected pages removed.');
+  }
+
+  function duplicateCurrentDoc() {
+    const doc = activeDoc();
+    if (!doc) return;
+    const duplicate = createDoc(`${doc.title} copy`, doc.pages.map(clonePageRef), true);
+    state.selected.clear();
+    renderAll();
+    toast(`${duplicate.title} created.`);
+  }
+
+  function moveCurrentDoc(direction) {
+    const doc = activeDoc();
+    if (!doc) return;
+    const index = state.docs.indexOf(doc);
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= state.docs.length) return;
+    state.docs.splice(index, 1);
+    state.docs.splice(nextIndex, 0, doc);
+    renderAll();
+  }
+
+  function removeCurrentDoc() {
+    const doc = activeDoc();
+    if (!doc) return;
+    if (doc.pages.length && !window.confirm(`Remove "${doc.title}" and its ${doc.pages.length} page${doc.pages.length === 1 ? '' : 's'} from the workspace?`)) return;
+    const index = state.docs.indexOf(doc);
+    state.docs.splice(index, 1);
+    state.activeDocId = state.docs[index]?.id || state.docs[index - 1]?.id || null;
+    state.selected.clear();
+    renderAll();
+    toast('Output PDF removed.');
+  }
+
+  async function handleFiles(fileList) {
+    if (state.busy) return;
+    const files = Array.from(fileList || []).filter(file => file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)));
+    els.fileInput.value = '';
+    if (!files.length) return toast('No PDF files found.');
+
+    await withBusy(`Loading ${files.length} PDF file${files.length === 1 ? '' : 's'}…`, async () => {
+      requireLibraries();
+      const failures = [];
+      let loaded = 0;
+      let rasterFallbacks = 0;
+      let firstNewDocId = null;
+
+      for (const file of files) {
+        try {
+          const source = await loadPdfSource(file);
+          const pages = Array.from({ length: source.pageCount }, (_, pageIndex) => makePageRef(source.id, pageIndex));
+          const doc = createDoc(file.name.replace(/\.pdf$/i, '') || `PDF ${loaded + 1}`, pages, false);
+          if (!firstNewDocId) firstNewDocId = doc.id;
+          loaded += 1;
+          if (source.requiresRasterExport) rasterFallbacks += 1;
+          setStatus(`Loaded ${loaded} of ${files.length}: ${file.name}`, 'warn');
+        } catch (error) {
+          console.error(error);
+          failures.push(`${file.name}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      if (firstNewDocId) state.activeDocId = firstNewDocId;
+      state.selected.clear();
+      renderAll();
+
+      if (failures.length) {
+        setStatus(`Loaded ${loaded}; ${failures.length} failed.`, 'err');
+        toast(failures.join(' | '));
+      } else if (rasterFallbacks) {
+        setStatus(`Loaded ${loaded}. ${rasterFallbacks} file${rasterFallbacks === 1 ? '' : 's'} may use rendered export fallback.`, 'warn');
+        toast('PDFs loaded. Some unusual pages may be flattened during export.');
+      } else {
+        setStatus(`Loaded ${loaded} PDF file${loaded === 1 ? '' : 's'}.`, 'ok');
+        toast('PDFs loaded. Tap pages to select them.');
+      }
+    });
+  }
+
+  async function loadPdfSource(file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const id = uid('src_', 'sourceSeq');
+    const source = {
+      id,
+      name: file.name || `PDF ${state.sourceSeq}`,
+      bytes,
+      pdfLibDoc: null,
+      pdfJsDoc: null,
+      pageCount: 0,
+      requiresRasterExport: false
+    };
+
+    let libError = null;
+    try {
+      source.pdfLibDoc = await window.PDFLib.PDFDocument.load(bytes.slice(), { ignoreEncryption: true });
+      source.pageCount = source.pdfLibDoc.getPageCount();
+      source.requiresRasterExport = Boolean(source.pdfLibDoc.isEncrypted);
+    } catch (error) {
+      libError = error;
+      source.requiresRasterExport = true;
+    }
+
+    try {
+      const task = window.pdfjsLib.getDocument({ data: bytes.slice(), disableFontFace: false, isEvalSupported: false });
+      source.pdfJsDoc = await task.promise;
+      source.pageCount = source.pageCount || source.pdfJsDoc.numPages || 0;
+    } catch (error) {
+      if (!source.pdfLibDoc) throw libError || error;
+      console.warn('PDF.js preview loading failed.', error);
+    }
+
+    if (!source.pageCount) throw new Error('No pages were found.');
+    state.sources.set(id, source);
+    return source;
+  }
+
+  function exportRefs(refs) {
+    return refs.filter(ref => sourceFor(ref));
+  }
+
+  async function buildPdfBlob(refs, onProgress = null) {
+    requireLibraries();
+    const pages = exportRefs(refs);
+    if (!pages.length) throw new Error('There are no pages to export.');
+    const output = await window.PDFLib.PDFDocument.create();
+
+    for (let index = 0; index < pages.length; index += 1) {
+      const ref = pages[index];
+      const source = sourceFor(ref);
+      onProgress?.(index + 1, pages.length, source);
+      let copied = false;
+
+      if (source?.pdfLibDoc) {
+        try {
+          const [page] = await output.copyPages(source.pdfLibDoc, [ref.pageIndex]);
+          output.addPage(page);
+          copied = true;
+        } catch (error) {
+          console.warn(`Vector copy failed for ${source.name} page ${ref.pageIndex + 1}.`, error);
+        }
+      }
+
+      if (!copied) await addRasterizedPage(output, source, ref.pageIndex);
+    }
+
+    const bytes = await output.save({ useObjectStreams: true });
+    return new Blob([bytes], { type: 'application/pdf' });
+  }
+
+  async function addRasterizedPage(output, source, pageIndex) {
+    if (!source?.pdfJsDoc) throw new Error(`Page ${pageIndex + 1} from ${source?.name || 'a source PDF'} cannot be copied or rendered.`);
+    const pdfPage = await source.pdfJsDoc.getPage(pageIndex + 1);
+    const baseViewport = pdfPage.getViewport({ scale: 1 });
+    const dpiScale = 180 / 72;
+    const pixelScale = Math.sqrt(MAX_EXPORT_PIXELS / Math.max(1, baseViewport.width * baseViewport.height));
+    const dimensionScale = Math.min(
+      MAX_EXPORT_DIMENSION / Math.max(1, baseViewport.width),
+      MAX_EXPORT_DIMENSION / Math.max(1, baseViewport.height)
+    );
+    const scale = Math.max(1, Math.min(dpiScale, pixelScale, dimensionScale));
+    const viewport = pdfPage.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(viewport.width));
+    canvas.height = Math.max(1, Math.round(viewport.height));
+    const context = canvas.getContext('2d', { alpha: false });
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    await pdfPage.render({ canvasContext: context, viewport }).promise;
+    const pngBlob = await new Promise((resolve, reject) => {
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not rasterize a PDF page.')), 'image/png');
+    });
+    const png = await output.embedPng(new Uint8Array(await pngBlob.arrayBuffer()));
+    const page = output.addPage([baseViewport.width, baseViewport.height]);
+    page.drawImage(png, { x: 0, y: 0, width: baseViewport.width, height: baseViewport.height });
+    canvas.width = 1;
+    canvas.height = 1;
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  async function downloadCurrent() {
+    const doc = activeDoc();
+    if (!doc?.pages.length) return toast('The current output PDF has no pages.');
+    await withBusy(`Building ${doc.title}.pdf…`, async () => {
+      const blob = await buildPdfBlob(doc.pages, (current, total) => {
+        els.busyText.textContent = `Building page ${current} of ${total}…`;
+      });
+      downloadBlob(blob, `${sanitizeName(doc.title)}.pdf`);
+      setStatus(`Downloaded ${doc.title}.pdf.`, 'ok');
+      toast(`Downloaded ${doc.title}.pdf`);
+    });
+  }
+
+  async function downloadMerged() {
+    const refs = state.docs.flatMap(doc => doc.pages);
+    if (!refs.length) return toast('There are no pages to merge.');
+    await withBusy('Building merged PDF…', async () => {
+      const blob = await buildPdfBlob(refs, (current, total) => {
+        els.busyText.textContent = `Building page ${current} of ${total}…`;
+      });
+      downloadBlob(blob, 'merged.pdf');
+      setStatus('Downloaded merged.pdf.', 'ok');
+      toast('Merged PDF downloaded.');
+    });
+  }
+
+  async function downloadSelected() {
+    const refs = selectedRefs();
+    if (!refs.length) return;
+    await withBusy('Building selected pages…', async () => {
+      const blob = await buildPdfBlob(refs, (current, total) => {
+        els.busyText.textContent = `Building page ${current} of ${total}…`;
+      });
+      downloadBlob(blob, 'selected-pages.pdf');
+      setStatus('Downloaded selected-pages.pdf.', 'ok');
+      toast('Selected pages downloaded.');
+    });
+  }
+
+  async function downloadZip() {
+    const docs = state.docs.filter(doc => doc.pages.length);
+    if (!docs.length) return toast('There are no non-empty PDFs to download.');
+    await withBusy('Building ZIP archive…', async () => {
+      requireLibraries({ zip: true });
+      const zip = new window.JSZip();
+      const used = new Set();
+      for (let index = 0; index < docs.length; index += 1) {
+        const doc = docs[index];
+        els.busyText.textContent = `Building PDF ${index + 1} of ${docs.length}: ${doc.title}…`;
+        const blob = await buildPdfBlob(doc.pages);
+        zip.file(uniqueFilename(doc.title, used), await blob.arrayBuffer());
+      }
+      els.busyText.textContent = 'Compressing ZIP archive…';
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+      downloadBlob(blob, 'pdf-page-studio-outputs.zip');
+      setStatus(`Downloaded ${docs.length} PDF file${docs.length === 1 ? '' : 's'} in a ZIP.`, 'ok');
+      toast('ZIP archive downloaded.');
+    });
+  }
+
+  function clearWorkspace() {
+    if (!state.docs.length) return;
+    if (!window.confirm('Clear all loaded PDFs and output pages from this browser tab?')) return;
+    state.sources.forEach(source => {
+      try { source.pdfJsDoc?.destroy?.(); } catch {}
+    });
+    state.sources.clear();
+    state.docs = [];
+    state.activeDocId = null;
+    state.selected.clear();
+    renderAll();
+    setStatus('Workspace cleared.', 'ok');
+    toast('Workspace cleared.');
+  }
+
+  function addEmptyDoc() {
+    const doc = createDoc(`Output ${state.docs.length + 1}`, [], true);
+    state.selected.clear();
+    renderAll();
+    toast(`${doc.title} created.`);
+  }
+
+  function bindEvents() {
+    const openFilePicker = () => !state.busy && els.fileInput.click();
+    els.uploadBtn.addEventListener('click', openFilePicker);
+    els.emptyUploadBtn.addEventListener('click', openFilePicker);
+    els.fileDrop.addEventListener('click', openFilePicker);
+    els.fileDrop.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openFilePicker();
+      }
+    });
+    els.fileDrop.tabIndex = 0;
+    els.fileInput.addEventListener('change', () => handleFiles(els.fileInput.files));
+
+    ['dragenter', 'dragover'].forEach(type => els.fileDrop.addEventListener(type, event => {
+      event.preventDefault();
+      if (!state.busy) els.fileDrop.classList.add('dragover');
+    }));
+    ['dragleave', 'drop'].forEach(type => els.fileDrop.addEventListener(type, event => {
+      event.preventDefault();
+      els.fileDrop.classList.remove('dragover');
+    }));
+    els.fileDrop.addEventListener('drop', event => {
+      if (!state.busy) handleFiles(event.dataTransfer?.files);
+    });
+
+    els.newDocBtn.addEventListener('click', addEmptyDoc);
+    els.addDocBtn.addEventListener('click', addEmptyDoc);
+    els.downloadMergedBtn.addEventListener('click', downloadMerged);
+    els.downloadZipBtn.addEventListener('click', downloadZip);
+    els.clearBtn.addEventListener('click', clearWorkspace);
+    els.themeBtn.addEventListener('click', toggleTheme);
+    els.helpBtn.addEventListener('click', () => els.helpDialog.showModal());
+    els.closeHelpBtn.addEventListener('click', () => els.helpDialog.close());
+
+    els.docName.addEventListener('input', () => {
+      const doc = activeDoc();
+      if (!doc) return;
+      doc.title = els.docName.value.trim() || 'Untitled PDF';
+      renderDocStrip();
+    });
+    els.docName.addEventListener('blur', () => {
+      const doc = activeDoc();
+      if (!doc) return;
+      doc.title = sanitizeName(doc.title);
+      els.docName.value = doc.title;
+      renderDocStrip();
+    });
+
+    els.downloadCurrentBtn.addEventListener('click', downloadCurrent);
+    els.duplicateDocBtn.addEventListener('click', duplicateCurrentDoc);
+    els.moveDocLeftBtn.addEventListener('click', () => moveCurrentDoc(-1));
+    els.moveDocRightBtn.addEventListener('click', () => moveCurrentDoc(1));
+    els.removeDocBtn.addEventListener('click', removeCurrentDoc);
+    els.selectAllBtn.addEventListener('click', selectAllPages);
+    els.clearPageSelectionBtn.addEventListener('click', () => clearSelection());
+    els.clearSelectionBtn.addEventListener('click', () => clearSelection());
+    els.moveSelectedBtn.addEventListener('click', () => transferSelected(false));
+    els.copySelectedBtn.addEventListener('click', () => transferSelected(true));
+    els.moveNewBtn.addEventListener('click', splitSelectedToNewDoc);
+    els.copyNewBtn.addEventListener('click', copySelectedToNewDoc);
+    els.downloadSelectedBtn.addEventListener('click', downloadSelected);
+    els.deleteSelectedBtn.addEventListener('click', deleteSelected);
+
+    window.addEventListener('resize', () => {
+      window.clearTimeout(bindEvents.resizeTimer);
+      bindEvents.resizeTimer = window.setTimeout(() => renderPages(), 180);
+    });
+  }
+
+  function initialize() {
+    setTheme(storedTheme(), false);
+    if (window.pdfjsLib) window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_URL;
+    bindEvents();
+    renderAll();
+    try {
+      requireLibraries();
+      setStatus('Ready. PDF processing stays in this browser.', 'ok');
+    } catch (error) {
+      setStatus(error.message, 'err');
+    }
+  }
+
+  initialize();
+})();
+<\/script>
+</body>
+</html>
+
+</script>
+<script>
+  /* PDF_PAGE_STUDIO_RESPONSIVE_BOOT */
+  (() => {
+    const current = new URL(window.location.href);
+    const requestedView = current.searchParams.get('view');
+    const smallScreen = window.matchMedia(
+      '(max-width: 820px), (max-height: 520px) and (pointer: coarse)'
+    ).matches;
+    const useMobile = requestedView === 'mobile' ||
+      (requestedView !== 'desktop' && smallScreen);
+    const sourceNode = document.getElementById('pdfPageStudioMobileSource');
+
+    if (!useMobile) {
+      sourceNode.remove();
+      return;
+    }
+
+    const mobileHtml = sourceNode.textContent
+      .trim()
+      .replace(/<\\\/script>/gi, '<' + '/script>');
+    document.open();
+    document.write(mobileHtml);
+    document.close();
+  })();
+</script>
 <title>PDF Page Studio</title>
 <meta name="description" content="A single-page browser app for splitting, merging, rearranging, and moving PDF pages across files.">
 <meta name="theme-color" content="#0f172a" id="themeColorMeta">
@@ -51,7 +1526,6 @@
     --scrollbar-thumb: linear-gradient(180deg, var(--accent), var(--accent-2));
     --scrollbar-thumb-hover: linear-gradient(180deg, #7dd3fc, #c4b5fd);
   }
-
   body.theme-light {
     --bg: #eef2ff;
     --panel: #ffffff;
@@ -84,7 +1558,6 @@
     --scrollbar-thumb: linear-gradient(180deg, #38bdf8, #8b5cf6);
     --scrollbar-thumb-hover: linear-gradient(180deg, #0284c7, #7c3aed);
   }
-
   body.large-thumbnails {
     --doc-w: min(710px, calc(100vw - 2rem));
     --thumb-w: 430px;
@@ -106,7 +1579,6 @@
   }
 
   body.theme-light * { scrollbar-color: rgba(14, 165, 233, .8) var(--scrollbar-track); }
-
   *::-webkit-scrollbar {
     width: .86rem;
     height: .86rem;
@@ -123,7 +1595,6 @@
     border-radius: 999px;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
   }
-
   *::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
   *::-webkit-scrollbar-corner { background: transparent; }
 
@@ -138,7 +1609,6 @@
   }
 
   button, input { font: inherit; }
-
   button {
     border: 0;
     border-radius: 999px;
@@ -150,7 +1620,6 @@
     transition: transform .12s ease, filter .12s ease, background .12s ease;
     white-space: nowrap;
   }
-
   button:hover { transform: translateY(-1px); filter: brightness(1.04); }
   button:active { transform: translateY(0); filter: brightness(.96); }
   button:disabled { opacity: .48; cursor: not-allowed; transform: none; }
@@ -158,7 +1627,6 @@
   button.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #08111f; }
   button.danger { background: rgba(251, 113, 133, .18); color: #fecdd3; border: 1px solid rgba(251, 113, 133, .4); }
   button.small { padding: .45rem .68rem; font-size: .84rem; }
-
   button.toggle-switch {
     display: inline-flex;
     align-items: center;
@@ -173,7 +1641,6 @@
 
   button.toggle-switch:hover { background: var(--switch-hover-bg); }
   button.toggle-switch:focus-visible { outline: 3px solid rgba(56, 189, 248, .5); outline-offset: 2px; }
-
   .toggle-label {
     font-weight: 850;
     letter-spacing: -.01em;
@@ -185,7 +1652,6 @@
     font-weight: 900;
     color: #cbd5e1;
   }
-
   .toggle-track {
     position: relative;
     width: 3.7rem;
@@ -197,7 +1663,6 @@
     box-shadow: inset 0 2px 5px rgba(0,0,0,.35);
     transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
   }
-
   .toggle-knob {
     position: absolute;
     left: .22rem;
@@ -217,7 +1682,6 @@
   }
 
   button.toggle-switch[aria-checked="true"] .toggle-state { color: #bae6fd; }
-
   button.toggle-switch[aria-checked="true"] .toggle-track {
     background: linear-gradient(135deg, var(--accent), var(--accent-2));
     border-color: rgba(226, 232, 240, .38);
@@ -227,7 +1691,6 @@
   button.toggle-switch[aria-checked="true"] .toggle-knob {
     transform: translate(1.72rem, -50%);
   }
-
   .toggle-switch .toggle-track::before,
   .toggle-switch .toggle-track::after {
     position: absolute;
@@ -240,12 +1703,10 @@
     color: rgba(255,255,255,.78);
     pointer-events: none;
   }
-
   .toggle-switch .toggle-track::before { content: "ON"; left: .48rem; opacity: 0; }
   .toggle-switch .toggle-track::after { content: "OFF"; right: .42rem; opacity: .82; }
   .toggle-switch[aria-checked="true"] .toggle-track::before { opacity: .9; }
   .toggle-switch[aria-checked="true"] .toggle-track::after { opacity: 0; }
-
   body.theme-light .toggle-state { color: #334155; }
   body.theme-light button.toggle-switch[aria-checked="true"] .toggle-state { color: #0369a1; }
   body.theme-light .target { border-color: rgba(15, 23, 42, .16); }
@@ -258,7 +1719,6 @@
   body.theme-light .thumb-wrap { background: #f1f5f9; border-color: #cbd5e1; }
   body.theme-light .modal-actions button.primary,
   body.theme-light button.primary { color: #06101e; }
-
   a { color: var(--accent); }
 
   .app {
@@ -288,7 +1748,6 @@
     color: var(--muted);
     max-width: 68rem;
   }
-
   .top-actions {
     display: flex;
     gap: .55rem;
@@ -304,7 +1763,6 @@
     box-shadow: var(--shadow);
     backdrop-filter: blur(12px);
   }
-
   .dropzone {
     margin: .8rem;
     border: 1px dashed rgba(226, 232, 240, .34);
@@ -320,7 +1778,6 @@
 
   .dropzone strong { color: var(--ink); }
   .dropzone.dragover { border-color: var(--accent); background: rgba(56, 189, 248, .12); color: var(--ink); }
-
   .toolbar {
     display: flex;
     align-items: center;
@@ -340,7 +1797,6 @@
     align-items: center;
     gap: .5rem;
   }
-
   .status .dot {
     width: .62rem;
     height: .62rem;
@@ -362,7 +1818,6 @@
     background: rgba(56, 189, 248, .1);
     border-top: 1px solid rgba(56, 189, 248, .28);
   }
-
   .selection-bar.active { display: flex; }
   .selection-count { font-weight: 800; color: #bae6fd; margin-right: .35rem; }
 
@@ -378,7 +1833,6 @@
     overflow-x: auto;
     padding: 0 clamp(1rem, 2vw, 1.6rem) .8rem;
   }
-
   .target {
     border: 1px dashed rgba(226, 232, 240, .28);
     background: var(--target-bg);
@@ -394,7 +1848,6 @@
   .target strong { color: var(--ink); }
   .target.active { border-color: var(--accent); background: rgba(56, 189, 248, .15); color: var(--ink); }
   .target.trash.active { border-color: var(--danger); background: rgba(251, 113, 133, .14); }
-
   .target .symbol {
     width: 2rem;
     height: 2rem;
@@ -413,7 +1866,6 @@
     padding: .15rem clamp(1rem, 2vw, 1.6rem) 1.2rem;
     align-items: stretch;
   }
-
   .empty-state {
     border: 1px solid var(--line);
     background: var(--subtle-bg);
@@ -425,7 +1877,6 @@
   }
 
   .empty-state h2 { margin-top: 0; color: var(--ink); }
-
   .doc-card {
     width: var(--doc-w);
     min-width: var(--doc-w);
@@ -448,7 +1899,6 @@
     gap: .65rem;
     background: var(--doc-header-bg);
   }
-
   .doc-title-row {
     display: grid;
     grid-template-columns: auto 1fr auto;
@@ -470,7 +1920,6 @@
   }
 
   .doc-drag-handle:active { cursor: grabbing; }
-
   .doc-title {
     width: 100%;
     color: var(--ink);
@@ -481,7 +1930,6 @@
     outline: none;
     font-weight: 800;
   }
-
   .doc-title:focus { border-color: rgba(56, 189, 248, .6); box-shadow: 0 0 0 3px rgba(56, 189, 248, .12); }
   .doc-meta { color: var(--muted); font-size: .86rem; }
   .doc-tools {
@@ -513,7 +1961,6 @@
   }
   .go-page-input:focus { border-color: rgba(56, 189, 248, .65); box-shadow: 0 0 0 3px rgba(56, 189, 248, .12); }
   .go-page-input:disabled { opacity: .48; cursor: not-allowed; }
-
   .page-list {
     min-height: 225px;
     overflow: auto;
@@ -534,7 +1981,6 @@
     border-radius: 14px;
     background: rgba(255,255,255,.03);
   }
-
   .page-list.dragover {
     outline: 2px solid rgba(56, 189, 248, .45);
     outline-offset: -6px;
@@ -554,7 +2000,6 @@
     user-select: none;
     box-shadow: 0 10px 24px rgba(0,0,0,.18);
   }
-
   .page-card:active { cursor: grabbing; }
   .page-card.selected { outline: 3px solid rgba(56, 189, 248, .9); outline-offset: 2px; }
   .page-card.dragging { opacity: .42; }
@@ -569,7 +2014,6 @@
     overflow: hidden;
     border: 1px solid #cbd5e1;
   }
-
   canvas.thumb {
     max-width: var(--thumb-w);
     max-height: var(--thumb-h);
@@ -579,14 +2023,12 @@
     background: white;
     contain: paint;
   }
-
   .page-info { min-width: 0; display: grid; align-content: start; gap: .38rem; }
   .page-no { font-weight: 900; font-size: 1.02rem; }
   .source-name { color: var(--page-muted); font-size: .82rem; overflow-wrap: anywhere; }
   .page-id { color: var(--page-id); font-size: .78rem; }
   .page-actions { margin-top: .25rem; display: flex; gap: .35rem; flex-wrap: wrap; }
   .page-actions button { font-size: .75rem; padding: .33rem .48rem; border-radius: 9px; background: #e2e8f0; color: #0f172a; border: 1px solid #cbd5e1; }
-
   body.large-thumbnails .page-list { align-items: flex-start; }
   body.large-thumbnails .page-card {
     grid-template-columns: var(--thumb-w) minmax(9.6rem, 12.2rem);
@@ -604,7 +2046,6 @@
     padding-right: .15rem;
   }
   body.large-thumbnails .page-actions button { padding-inline: .44rem; }
-
   .page-card.jump-highlight {
     animation: jump-pulse 1.1s ease;
   }
@@ -614,7 +2055,6 @@
     26% { outline: 3px solid rgba(56, 189, 248, .95); box-shadow: 0 0 0 7px rgba(56, 189, 248, .18), 0 18px 34px rgba(0,0,0,.24); }
     100% { outline-color: rgba(56, 189, 248, 0); box-shadow: 0 10px 24px rgba(0,0,0,.18); }
   }
-
   .drop-marker {
     height: 14px;
     border-radius: 999px;
@@ -632,7 +2072,6 @@
     background: linear-gradient(180deg, var(--accent), var(--accent-2));
     box-shadow: 0 0 0 3px rgba(56, 189, 248, .15);
   }
-
   dialog {
     border: 1px solid var(--line);
     border-radius: 18px;
@@ -646,7 +2085,6 @@
   dialog h2 { margin-top: 0; }
   dialog li { margin: .4rem 0; }
   .modal-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1rem; }
-
   .toast {
     position: fixed;
     left: 50%;
@@ -664,7 +2102,6 @@
   }
 
   .toast.show { transform: translateX(-50%) translateY(0); }
-
   @media (max-width: 780px) {
     body { overflow: auto; }
     .app { min-height: 100%; height: auto; overflow: visible; }
@@ -709,7 +2146,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <button class="secondary" id="helpBtn">How to use</button>
     </div>
   </header>
-
   <section class="panel" aria-label="Upload and actions">
     <div id="fileDrop" class="dropzone">
       <div><strong>Drop PDF files here</strong><br>or use the upload button. Everything happens locally in this browser window.</div>
@@ -737,7 +2173,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <button id="clearSelectionBtn" class="small secondary">Clear selection</button>
     </div>
   </section>
-
   <main class="workspace-wrap">
     <div class="drop-targets">
       <div id="newDocDrop" class="target" role="button" tabindex="0">
@@ -757,9 +2192,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     </div>
   </main>
 </div>
-
 <input id="fileInput" type="file" accept="application/pdf" multiple hidden>
-
 <dialog id="helpDialog">
   <h2>How this app works</h2>
   <ol>
@@ -777,7 +2210,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   <p>Notes: the app runs in your browser and does not upload your PDFs to a server. Permission-protected PDFs are flattened to page images during export so their visible content is preserved; text on those pages will no longer be selectable.</p>
   <div class="modal-actions"><button id="closeHelpBtn" class="primary">Close</button></div>
 </dialog>
-
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -791,7 +2223,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-
   const els = {
     fileInput: $('#fileInput'),
     uploadBtn: $('#uploadBtn'),
@@ -820,7 +2251,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     closeHelpBtn: $('#closeHelpBtn'),
     toast: $('#toast')
   };
-
   const THUMBNAIL_PREF_KEY = 'pdfPageStudioLargeThumbnails';
   const THEME_PREF_KEY = 'pdfPageStudioTheme';
   const DEFAULT_PAGE_RATIO = 0.7727;
@@ -840,7 +2270,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     thumbActive: 0,
     thumbEpoch: 0
   };
-
   function uid(prefix, seqName) {
     state[seqName] += 1;
     return `${prefix}${state[seqName].toString(36)}_${Date.now().toString(36)}`;
@@ -850,7 +2279,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     els.status.className = `status ${kind}`.trim();
     els.statusText.textContent = text;
   }
-
   let toastTimer = 0;
   function toast(text) {
     window.clearTimeout(toastTimer);
@@ -858,7 +2286,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     els.toast.classList.add('show');
     toastTimer = window.setTimeout(() => els.toast.classList.remove('show'), 2600);
   }
-
   function setBusy(flag, text) {
     state.busy = flag;
     document.body.classList.toggle('is-busy', flag);
@@ -876,7 +2303,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     ].filter(Boolean).forEach(btn => btn.disabled = flag);
     if (text) setStatus(text, flag ? 'warn' : 'ok');
   }
-
   function storedLargeThumbnailPreference() {
     try {
       return window.localStorage.getItem(THUMBNAIL_PREF_KEY) === '1';
@@ -884,7 +2310,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return false;
     }
   }
-
   function setLargeThumbnails(enabled, persist = true, rerender = true) {
     document.body.classList.toggle('large-thumbnails', enabled);
     if (els.thumbnailSizeBtn) {
@@ -903,7 +2328,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     if (rerender) rerenderThumbnails();
   }
-
   function currentThumbnailBounds() {
     const wrap = $('.thumb-wrap');
     if (wrap) {
@@ -915,20 +2339,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const maxH = Number.parseFloat(styles.getPropertyValue('--thumb-h')) || 122;
     return { maxW, maxH };
   }
-
   function thumbnailOutputScale() {
     const dpr = Math.max(1, Number(window.devicePixelRatio) || 1);
     const large = document.body.classList.contains('large-thumbnails');
     return large ? Math.min(Math.max(dpr * 2.25, 5), 7.5) : Math.min(Math.max(dpr, 1.5), 2.75);
   }
-
   function capThumbnailScale(scale, cssWidth, cssHeight) {
     const large = document.body.classList.contains('large-thumbnails');
     const maxPixels = large ? 11000000 : 900000;
     const cap = Math.sqrt(maxPixels / Math.max(1, cssWidth * cssHeight));
     return Math.max(1, Math.min(scale, cap));
   }
-
   function fitThumbnailSize(maxW, maxH, ratio = DEFAULT_PAGE_RATIO) {
     const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : DEFAULT_PAGE_RATIO;
     let cssWidth = maxW;
@@ -942,12 +2363,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       cssHeight: Math.max(1, Math.round(cssHeight))
     };
   }
-
   function estimatedThumbnailSize(ref) {
     const { maxW, maxH } = currentThumbnailBounds();
     return fitThumbnailSize(maxW, maxH, ref?.previewRatio || DEFAULT_PAGE_RATIO);
   }
-
   function prepareThumbnailCanvasForMode(ref, canvas) {
     if (!canvas || !canvas.isConnected) return;
     const { cssWidth, cssHeight } = estimatedThumbnailSize(ref);
@@ -957,14 +2376,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       drawPlaceholder(canvas, ref, false, { cssWidth, cssHeight });
     }
   }
-
   function visiblePriority(card) {
     const rect = card.getBoundingClientRect();
     const visible = rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
     if (!visible) return 1_000_000 + Math.abs(rect.top);
     return Math.abs(rect.top - 120);
   }
-
   function rerenderThumbnails() {
     state.thumbEpoch += 1;
     state.thumbQueue = [];
@@ -982,13 +2399,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         });
     });
   }
-
   function toggleLargeThumbnails() {
     const enabled = !document.body.classList.contains('large-thumbnails');
     setLargeThumbnails(enabled);
     toast(enabled ? 'Large thumbnails enabled.' : 'Compact thumbnails enabled.');
   }
-
   function storedThemePreference() {
     try {
       const stored = window.localStorage.getItem(THEME_PREF_KEY);
@@ -998,7 +2413,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   }
-
   function setTheme(theme, persist = true) {
     const next = theme === 'light' ? 'light' : 'dark';
     const isLight = next === 'light';
@@ -1022,7 +2436,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
     }
   }
-
   function toggleTheme() {
     const next = document.body.classList.contains('theme-light') ? 'dark' : 'light';
     setTheme(next);
@@ -1034,7 +2447,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       throw new Error('pdf-lib did not load. Check your internet connection or inline the library for offline use.');
     }
   }
-
   function setupPdfJs() {
     if (window.pdfjsLib) {
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_URL;
@@ -1049,7 +2461,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       .trim()
       .slice(0, 90) || 'output';
   }
-
   function uniqueFilename(base, used, ext = '.pdf') {
     const clean = sanitizeName(base);
     let name = `${clean}${ext}`;
@@ -1061,7 +2472,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     used.add(name.toLowerCase());
     return name;
   }
-
   function trimMiddle(str, max = 30) {
     if (!str || str.length <= max) return str || '';
     const left = Math.ceil((max - 1) / 2);
@@ -1079,7 +2489,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     state.pageRefs.set(id, ref);
     return ref;
   }
-
   function clonePageRef(ref) {
     return makePageRef(ref.sourceId, ref.pageIndex);
   }
@@ -1094,7 +2503,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast('No PDF files found.');
       return;
     }
-
     try {
       requirePdfLib();
     } catch (err) {
@@ -1102,7 +2510,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast(err.message);
       return;
     }
-
     setBusy(true, `Loading ${pdfs.length} PDF file${pdfs.length === 1 ? '' : 's'}...`);
     const failures = [];
     let loaded = 0;
@@ -1135,7 +2542,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       setBusy(false);
     }
   }
-
   async function loadPdfFile(file) {
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
@@ -1152,13 +2558,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       isEncrypted: false,
       requiresRasterExport: false
     };
-
     try {
       source.pdfLibDoc = await window.PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
       source.pdfLibPageCount = source.pdfLibDoc.getPageCount();
       source.isEncrypted = Boolean(source.pdfLibDoc.isEncrypted);
       source.pageCount = source.pdfLibPageCount;
-
       if (window.pdfjsLib) {
         try {
           // PDF.js generally transfers TypedArray ownership to its worker. Give it an
@@ -1172,7 +2576,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           console.warn('PDF.js preview failed for', file.name, err);
         }
       }
-
       if (!source.pageCount) throw new Error('No pages found.');
 
       source.requiresRasterExport = source.isEncrypted || source.pdfJsPageCount > source.pdfLibPageCount;
@@ -1183,7 +2586,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       releaseSource(source);
       throw err;
     }
-
     state.sources.set(id, source);
     const pages = Array.from({ length: source.pageCount }, (_, i) => makePageRef(id, i));
     createDoc(sanitizeName(file.name), pages);
@@ -1197,7 +2599,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     updateEmptyState();
     return doc;
   }
-
   function renderDoc(doc) {
     const article = document.createElement('article');
     article.className = 'doc-card';
@@ -1225,7 +2626,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       </div>
       <div class="page-list" data-doc-id="${doc.id}" aria-label="Pages in ${escapeHtml(doc.title)}"></div>
     `;
-
     const input = $('.doc-title', article);
     const list = $('.page-list', article);
     const handle = $('.doc-drag-handle', article);
@@ -1240,7 +2640,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       event.preventDefault();
       goToDocPage(doc.id);
     });
-
     article.addEventListener('click', event => {
       if (state.busy) return;
       const btn = event.target.closest('button[data-action]');
@@ -1251,7 +2650,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if (action === 'select-doc') selectDocPages(doc.id);
       if (action === 'remove-doc') removeDoc(doc.id);
     });
-
     handle.addEventListener('dragstart', event => startDocDrag(event, doc.id, article));
     handle.addEventListener('dragend', endAnyDrag);
 
@@ -1261,7 +2659,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     els.workspace.appendChild(article);
     updateDocVisuals(article);
   }
-
   function createPageCard(ref) {
     const source = sourceFor(ref);
     const card = document.createElement('div');
@@ -1280,7 +2677,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         </div>
       </div>
     `;
-
     card.addEventListener('click', event => {
       if (state.busy) return;
       const btn = event.target.closest('button[data-page-action]');
@@ -1298,7 +2694,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
     card.addEventListener('dragstart', event => startPageDrag(event, card));
     card.addEventListener('dragend', endAnyDrag);
-
     enqueueThumbnail(ref, $('canvas.thumb', card));
     return card;
   }
@@ -1306,7 +2701,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   }
-
   function setupPageListDnD(list) {
     list.addEventListener('dragover', event => {
       if (!isDraggingPages()) return;
@@ -1329,7 +2723,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast(`${ids.length} page${ids.length === 1 ? '' : 's'} moved.`);
     });
   }
-
   function startPageDrag(event, card) {
     if (state.busy) {
       event.preventDefault();
@@ -1344,7 +2737,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     event.dataTransfer.setData('application/x-pdf-page-ids', JSON.stringify(ids));
     ids.forEach(pid => pageCard(pid)?.classList.add('dragging'));
   }
-
   function startDocDrag(event, docId, article) {
     if (state.busy) {
       event.preventDefault();
@@ -1355,7 +2747,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     event.dataTransfer.setData('text/plain', docId);
     article.classList.add('doc-dragging');
   }
-
   function endAnyDrag() {
     $$('.page-card.dragging').forEach(el => el.classList.remove('dragging'));
     $$('.doc-card.doc-dragging').forEach(el => el.classList.remove('doc-dragging'));
@@ -1364,7 +2755,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     removeMarkers();
     state.drag = null;
   }
-
   function isDraggingPages() {
     return state.drag && state.drag.kind === 'pages' && state.drag.ids && state.drag.ids.length;
   }
@@ -1379,7 +2769,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (after == null) list.appendChild(marker);
     else list.insertBefore(marker, after);
   }
-
   function pageMarker() {
     let marker = $('.drop-marker');
     if (!marker) {
@@ -1388,7 +2777,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     return marker;
   }
-
   function getPageAfterElement(container, y) {
     const cards = $$('.page-card:not(.dragging)', container);
     return cards.reduce((closest, child) => {
@@ -1398,7 +2786,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return closest;
     }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
   }
-
   function movePageCardsToList(ids, list) {
     const marker = $('.drop-marker', list);
     const before = marker || null;
@@ -1413,7 +2800,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function removeMarkers() {
     $$('.drop-marker, .doc-drop-marker').forEach(el => el.remove());
   }
-
   function setupWorkspaceDocDnD() {
     els.workspace.addEventListener('dragover', event => {
       if (!isDraggingDoc()) return;
@@ -1434,7 +2820,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast('Output PDF order updated.');
     });
   }
-
   function docMarker() {
     let marker = $('.doc-drop-marker');
     if (!marker) {
@@ -1443,7 +2828,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     return marker;
   }
-
   function getDocAfterElement(container, x) {
     const cards = $$('.doc-card:not(.doc-dragging)', container);
     return cards.reduce((closest, child) => {
@@ -1453,7 +2837,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return closest;
     }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
   }
-
   function setupDropTargets() {
     [els.newDocDrop, els.trashDrop].forEach(target => {
       target.addEventListener('dragover', event => {
@@ -1466,7 +2849,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!target.contains(event.relatedTarget)) target.classList.remove('active');
       });
     });
-
     els.newDocDrop.addEventListener('drop', event => {
       if (!isDraggingPages()) return;
       event.preventDefault();
@@ -1480,7 +2862,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       revealDoc(doc.id);
       toast(`${ids.length} page${ids.length === 1 ? '' : 's'} moved into new output PDF "${doc.title}".`);
     });
-
     els.trashDrop.addEventListener('drop', event => {
       if (!isDraggingPages()) return;
       event.preventDefault();
@@ -1491,7 +2872,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast(`${ids.length} page${ids.length === 1 ? '' : 's'} removed.`);
     });
   }
-
   function handlePageClick(event, card) {
     const id = card.dataset.pageId;
     if (event.shiftKey && state.lastClickedPageId) {
@@ -1503,7 +2883,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     state.lastClickedPageId = id;
   }
-
   function selectRange(fromId, toId, additive = false) {
     const a = pageCard(fromId);
     const b = pageCard(toId);
@@ -1521,7 +2900,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     cards.slice(lo, hi + 1).forEach(card => state.selected.add(card.dataset.pageId));
     refreshSelectedClasses();
   }
-
   function toggleSelection(id) {
     if (state.selected.has(id)) state.selected.delete(id);
     else state.selected.add(id);
@@ -1539,7 +2917,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     state.lastClickedPageId = null;
     refreshSelectedClasses();
   }
-
   function refreshSelectedClasses() {
     $$('.page-card').forEach(card => card.classList.toggle('selected', state.selected.has(card.dataset.pageId)));
     const n = state.selected.size;
@@ -1550,7 +2927,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function selectedIdsInDomOrder() {
     return $$('.page-card').map(card => card.dataset.pageId).filter(id => state.selected.has(id));
   }
-
   function selectDocPages(docId) {
     const ids = $$(`.page-list[data-doc-id="${docId}"] .page-card`).map(card => card.dataset.pageId);
     selectOnly(ids);
@@ -1563,7 +2939,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function docCard(docId) {
     return $(`.doc-card[data-doc-id="${docId}"]`);
   }
-
   function goToDocPage(docId) {
     syncFromDom();
     const article = docCard(docId);
@@ -1600,7 +2975,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const doc = getDoc(docId);
     toast(`Jumped to page ${pageNum}${doc ? ` in "${doc.title}"` : ''}.`);
   }
-
   function revealDoc(docId) {
     docCard(docId)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }
@@ -1612,7 +2986,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function getDoc(docId) {
     return state.docs.find(doc => doc.id === docId);
   }
-
   function duplicatePageInPlace(pageId) {
     const ref = state.pageRefs.get(pageId);
     const card = pageCard(pageId);
@@ -1627,7 +3000,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     revealPage(copy.id);
     toast(`Duplicate inserted after page ${ref.pageIndex + 1}${doc ? ` in "${doc.title}"` : ''}.`);
   }
-
   function moveSelectedToNewDoc() {
     const ids = selectedIdsInDomOrder();
     if (!ids.length) return toast('Select at least one page.');
@@ -1639,7 +3011,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     revealDoc(doc.id);
     toast(`${ids.length} page${ids.length === 1 ? '' : 's'} moved into new output PDF "${doc.title}".`);
   }
-
   function copySelectedToNewDoc() {
     const ids = selectedIdsInDomOrder();
     if (!ids.length) return toast('Select at least one page.');
@@ -1651,7 +3022,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (copies[0]) revealPage(copies[0].id);
     toast(`${copies.length} page${copies.length === 1 ? '' : 's'} copied into new output PDF "${doc.title}".`);
   }
-
   function removeSelected() {
     const ids = selectedIdsInDomOrder();
     if (!ids.length) return;
@@ -1667,7 +3037,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
     refreshSelectedClasses();
   }
-
   function releaseSource(source) {
     if (!source) return;
     try {
@@ -1680,7 +3049,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     source.pdfLibDoc = null;
     source.bytes = null;
   }
-
   function pruneUnusedState() {
     const activePageIds = new Set(state.docs.flatMap(doc => doc.pages.map(ref => ref.id)));
     for (const id of state.pageRefs.keys()) {
@@ -1692,7 +3060,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (state.lastClickedPageId && !activePageIds.has(state.lastClickedPageId)) {
       state.lastClickedPageId = null;
     }
-
     const activeSourceIds = new Set(Array.from(state.pageRefs.values(), ref => ref.sourceId));
     for (const [sourceId, source] of state.sources) {
       if (!activeSourceIds.has(sourceId)) {
@@ -1701,7 +3068,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
     }
   }
-
   function duplicateDoc(docId) {
     syncFromDom();
     const doc = getDoc(docId);
@@ -1712,7 +3078,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     revealDoc(newDoc.id);
     toast(`Output PDF duplicated as "${newDoc.title}".`);
   }
-
   function removeDoc(docId) {
     syncFromDom();
     const doc = getDoc(docId);
@@ -1727,7 +3092,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     updateEmptyState();
     toast('Output PDF removed.');
   }
-
   function syncFromDom() {
     const docs = [];
     $$('.doc-card').forEach(article => {
@@ -1744,7 +3108,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     refreshSelectedClasses();
     updateEmptyState();
   }
-
   function updateDocVisuals(article) {
     const list = $('.page-list', article);
     const cards = $$('.page-card', list);
@@ -1767,12 +3130,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     if (goButton) goButton.disabled = count === 0;
   }
-
   function updateEmptyState() {
     const hasDocs = $$('.doc-card').length > 0;
     els.emptyState.style.display = hasDocs ? 'none' : '';
   }
-
   function enqueueThumbnail(ref, canvas, priority = false) {
     if (!canvas) return;
     if (!canvas.isConnected) {
@@ -1788,7 +3149,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     else state.thumbQueue.push(job);
     pumpThumbnailQueue();
   }
-
   function pumpThumbnailQueue() {
     while (state.thumbActive < 2 && state.thumbQueue.length) {
       const job = state.thumbQueue.shift();
@@ -1805,7 +3165,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         });
     }
   }
-
   async function renderThumbnail(ref, canvas, epoch = state.thumbEpoch) {
     if (epoch !== state.thumbEpoch || !canvas.isConnected) return;
     const source = sourceFor(ref);
@@ -1840,7 +3199,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       canvas.dataset.thumbMode = document.body.classList.contains('large-thumbnails') ? 'large' : 'compact';
     }
   }
-
   function drawPlaceholder(canvas, ref, failed, dims = null) {
     const source = sourceFor(ref);
     const size = dims || estimatedThumbnailSize(ref);
@@ -1866,7 +3224,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     ctx.fillStyle = '#64748b';
     wrapCanvasText(ctx, trimMiddle(source ? source.name : 'PDF', 18), 18, Math.min(74, cssHeight - 38), Math.max(42, cssWidth - 36), 12);
   }
-
   function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
     const words = String(text).split(/\s+/);
     let line = '';
@@ -1882,7 +3239,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     if (line) ctx.fillText(line, x, y);
   }
-
   function rasterExportScale(viewport) {
     const width = Number(viewport.width);
     const height = Number(viewport.height);
@@ -1898,7 +3254,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     return scale;
   }
-
   function canvasToBlob(canvas, type = 'image/png') {
     return new Promise((resolve, reject) => {
       canvas.toBlob(blob => {
@@ -1912,13 +3267,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (!source.pdfJsDoc) {
       throw new Error(`Cannot preserve page ${pageIndex + 1} from ${source.name}: PDF.js rendering is unavailable.`);
     }
-
     const page = await source.pdfJsDoc.getPage(pageIndex + 1);
     const baseViewport = page.getViewport({ scale: 1 });
     if (!Number.isFinite(baseViewport.width) || !Number.isFinite(baseViewport.height) || baseViewport.width <= 0 || baseViewport.height <= 0) {
       throw new Error(`Cannot export page ${pageIndex + 1} from ${source.name}: invalid page dimensions.`);
     }
-
     const scale = rasterExportScale(baseViewport);
     const viewport = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
@@ -1926,12 +3279,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     canvas.height = Math.max(1, Math.ceil(viewport.height));
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('The browser could not create a canvas for PDF export.');
-
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     try {
       await page.render({
         canvasContext: ctx,
@@ -1953,7 +3304,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       canvas.height = 1;
     }
   }
-
   async function buildPdfBlob(pageRefs) {
     requirePdfLib();
     if (!pageRefs.length) throw new Error('There are no pages to export.');
@@ -1962,13 +3312,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     for (const ref of pageRefs) {
       const source = sourceFor(ref);
       if (!source) throw new Error('A source PDF is missing from memory.');
-
       const mustRasterize = source.isEncrypted || ref.pageIndex >= source.pdfLibPageCount;
       if (mustRasterize) {
         await addRasterizedPage(out, source, ref.pageIndex);
         continue;
       }
-
       try {
         let srcDoc = srcCache.get(ref.sourceId);
         if (!srcDoc) {
@@ -1986,7 +3334,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const bytes = await out.save({ useObjectStreams: true });
     return new Blob([bytes], { type: 'application/pdf' });
   }
-
   async function downloadDoc(docId) {
     if (state.busy) return;
     syncFromDom();
@@ -1999,7 +3346,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast(`Downloaded ${doc.title}.pdf`);
     });
   }
-
   async function downloadSelected() {
     if (state.busy) return;
     const ids = selectedIdsInDomOrder();
@@ -2011,7 +3357,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast('Downloaded selected pages.');
     });
   }
-
   async function downloadMerged() {
     if (state.busy) return;
     syncFromDom();
@@ -2023,7 +3368,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast('Downloaded merged.pdf');
     });
   }
-
   async function downloadZip() {
     if (state.busy) return;
     syncFromDom();
@@ -2046,7 +3390,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       toast('Downloaded ZIP archive.');
     });
   }
-
   async function withExportBusy(label, fn) {
     if (state.busy) return;
     try {
@@ -2061,7 +3404,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       setBusy(false);
     }
   }
-
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -2074,7 +3416,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       a.remove();
     }, 30000);
   }
-
   function clearWorkspace() {
     if (state.busy) return;
     if (state.docs.length && !window.confirm('Clear all loaded PDFs and output columns from this workspace?')) return;
@@ -2092,14 +3433,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     setStatus('Ready.', 'ok');
     toast('Workspace cleared.');
   }
-
   function bindUpload() {
     els.uploadBtn.addEventListener('click', () => els.fileInput.click());
     els.fileInput.addEventListener('change', () => {
       handleFiles(els.fileInput.files);
       els.fileInput.value = '';
     });
-
     ['dragenter', 'dragover'].forEach(type => {
       els.fileDrop.addEventListener(type, event => {
         if (state.drag || state.busy) return;
@@ -2116,7 +3455,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
     });
   }
-
   function bindButtons() {
     els.newDocBtn.addEventListener('click', () => {
       if (state.busy) return;
@@ -2139,7 +3477,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     els.helpBtn.addEventListener('click', () => els.helpDialog.showModal());
     els.closeHelpBtn.addEventListener('click', () => els.helpDialog.close());
   }
-
   function bindKeyboard() {
     document.addEventListener('keydown', event => {
       if (state.busy) return;
@@ -2153,7 +3490,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
     });
   }
-
   function boot() {
     setupPdfJs();
     setTheme(storedThemePreference(), false);
@@ -2164,7 +3500,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     bindButtons();
     bindKeyboard();
     updateEmptyState();
-
     if (!window.PDFLib) {
       setStatus('pdf-lib failed to load. PDF export will not work until the dependency is available.', 'err');
     } else if (!window.pdfjsLib) {
