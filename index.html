@@ -497,7 +497,7 @@
     <li>Upload one or more PDFs. Each uploaded file starts as its own output PDF.</li>
     <li>Use the tabs near the top to switch between output PDFs.</li>
     <li>Tap a page card or its Select button. Selected pages can be moved, copied, split into a new PDF, deleted, or downloaded.</li>
-    <li>Use Earlier and Later on a page card to reorder pages without touch dragging.</li>
+    <li>Use <strong>Move up</strong> and <strong>Move down</strong> on a page card to reorder pages without dragging.</li>
     <li>Rename the current output in the name field. Use Move left and Move right to reorder output PDFs.</li>
     <li>Download the current PDF, one merged PDF, or a ZIP containing every non-empty output PDF.</li>
   </ol>
@@ -624,6 +624,13 @@
     });
     els.docName.disabled = flag || !activeDoc();
     if (!flag) {
+      const cards = Array.from(els.pageGrid.querySelectorAll('.page-card'));
+      cards.forEach((card, index) => {
+        const moveUp = $('[data-action="earlier"]', card);
+        const moveDown = $('[data-action="later"]', card);
+        if (moveUp) moveUp.disabled = index === 0;
+        if (moveDown) moveDown.disabled = index === cards.length - 1;
+      });
       updateDocControls(activeDoc());
       renderSelectionTray();
     }
@@ -857,8 +864,8 @@
     const buttons = document.createElement('div');
     buttons.className = 'page-buttons';
     buttons.innerHTML = `
-      <button type="button" data-action="earlier" ${index === 0 ? 'disabled' : ''}>Earlier</button>
-      <button type="button" data-action="later" ${index === total - 1 ? 'disabled' : ''}>Later</button>
+      <button type="button" data-action="earlier" ${index === 0 ? 'disabled' : ''}>Move up</button>
+      <button type="button" data-action="later" ${index === total - 1 ? 'disabled' : ''}>Move down</button>
       <button type="button" data-action="duplicate">Duplicate</button>
       <button type="button" class="remove" data-action="remove">Remove</button>
     `;
@@ -2197,7 +2204,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   <h2>How this app works</h2>
   <ol>
     <li>Upload one or more PDFs with the button or by dropping files into the upload area.</li>
-    <li>Each column is an output PDF. Drag pages inside a column to reorder them.</li>
+    <li>Each column is an output PDF. Drag pages inside a column to reorder them, or use each page's <strong>Move up</strong> and <strong>Move down</strong> buttons.</li>
     <li>Drag pages across columns to move pages across files. This is how you merge or redistribute pages.</li>
     <li>Use <strong>New empty PDF</strong>, or drop selected pages on the <strong>Drop pages here</strong> target, to split pages into a new output.</li>
     <li>Click pages to select them. Use Ctrl-click to toggle pages and Shift-click to select a range in the same column. Drag one selected page to move the whole selected group.</li>
@@ -2672,6 +2679,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <div class="source-name" title="${escapeHtml(source ? source.name : '')}">Source: ${escapeHtml(trimMiddle(source ? source.name : 'Unknown source', 34))}</div>
         <div class="page-id">Original page ${ref.pageIndex + 1}</div>
         <div class="page-actions">
+          <button type="button" data-page-action="move-up" title="Move this page one position up">Move up</button>
+          <button type="button" data-page-action="move-down" title="Move this page one position down">Move down</button>
           <button type="button" data-page-action="copy-one" title="Insert a duplicate after this page">Duplicate</button>
           <button type="button" data-page-action="remove-one">Remove</button>
         </div>
@@ -2682,6 +2691,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       const btn = event.target.closest('button[data-page-action]');
       if (btn) {
         event.stopPropagation();
+        if (btn.dataset.pageAction === 'move-up') movePageByOne(ref.id, -1);
+        if (btn.dataset.pageAction === 'move-down') movePageByOne(ref.id, 1);
         if (btn.dataset.pageAction === 'copy-one') duplicatePageInPlace(ref.id);
         if (btn.dataset.pageAction === 'remove-one') {
           removePageCards([ref.id]);
@@ -2986,6 +2997,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function getDoc(docId) {
     return state.docs.find(doc => doc.id === docId);
   }
+  function movePageByOne(pageId, direction) {
+    if (state.busy || (direction !== -1 && direction !== 1)) return;
+    const card = pageCard(pageId);
+    const list = card?.closest('.page-list');
+    if (!list) return;
+    const cards = $$('.page-card', list);
+    const adjacent = cards[cards.indexOf(card) + direction];
+    if (!adjacent) return;
+    if (direction < 0) list.insertBefore(card, adjacent);
+    else list.insertBefore(adjacent, card);
+    syncFromDom();
+    revealPage(pageId);
+  }
   function duplicatePageInPlace(pageId) {
     const ref = state.pageRefs.get(pageId);
     const card = pageCard(pageId);
@@ -3116,6 +3140,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     cards.forEach((card, index) => {
       const label = $('[data-output-page]', card);
       if (label) label.textContent = `Page ${index + 1}`;
+      const moveUp = $('[data-page-action="move-up"]', card);
+      const moveDown = $('[data-page-action="move-down"]', card);
+      if (moveUp) moveUp.disabled = index === 0;
+      if (moveDown) moveDown.disabled = index === count - 1;
     });
     const meta = $('[data-page-count]', article);
     if (meta) meta.textContent = `${count} page${count === 1 ? '' : 's'}`;
